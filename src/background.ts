@@ -2,7 +2,14 @@
 interface Site {
   domain: string;
   limitMinutes: number;
+  sessionLimitMinutes: number;
   timeSpentToday: number;
+  sessionTimeSpent: number;
+}
+
+interface ScreenTimeEntry {
+  domain: string;
+  timeSpentToday: number; // in minutes
 }
 
 interface Group {
@@ -16,13 +23,13 @@ interface Group {
 interface StorageData {
   sites: Site[];
   groups: Group[];
+  screenTime: ScreenTimeEntry[];
   lastResetDate: string;
 }
 
 let activeTabDomain: string | null = null;
 let lastTickTime = Date.now();
 
-// Utility to get domain from URL
 function getDomain(url: string | undefined): string | null {
   if (!url) return null;
   try {
@@ -38,15 +45,25 @@ async function checkAndRedirect(domain: string, data: StorageData) {
   const groups = data.groups.filter(g => g.sites.includes(domain));
 
   let shouldBlock = false;
+  let reason = 'daily';
 
-  if (site && site.limitMinutes > 0 && site.timeSpentToday >= site.limitMinutes) {
-    shouldBlock = true;
+  if (site) {
+    if (site.limitMinutes > 0 && site.timeSpentToday >= site.limitMinutes) {
+      shouldBlock = true;
+      reason = 'daily';
+    } else if (site.sessionLimitMinutes > 0 && site.sessionTimeSpent >= site.sessionLimitMinutes) {
+      shouldBlock = true;
+      reason = 'session';
+    }
   }
 
-  for (const group of groups) {
-    if (group.limitMinutes > 0 && group.timeSpentToday >= group.limitMinutes) {
-      shouldBlock = true;
-      break;
+  if (!shouldBlock) {
+    for (const group of groups) {
+      if (group.limitMinutes > 0 && group.timeSpentToday >= group.limitMinutes) {
+        shouldBlock = true;
+        reason = 'group';
+        break;
+      }
     }
   }
 
@@ -54,7 +71,7 @@ async function checkAndRedirect(domain: string, data: StorageData) {
     const tabs = await chrome.tabs.query({ url: [`*://*.${domain}/*`] });
     for (const tab of tabs) {
       if (tab.id) {
-        chrome.tabs.update(tab.id, { url: chrome.runtime.getURL(`blocked.html?site=${domain}`) });
+        chrome.tabs.update(tab.id, { url: chrome.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`) });
       }
     }
   }
@@ -65,76 +82,104 @@ async function updateTime() {
   const deltaSeconds = (now - lastTickTime) / 1000;
   lastTickTime = now;
 
-  if (!activeTabDomain) return;
-
-  const result = await chrome.storage.local.get(['sites', 'groups', 'lastResetDate']);
+  const result = await chrome.storage.local.get(['sites', 'groups', 'screenTime', 'lastResetDate']);
   const sites = (result.sites || []) as Site[];
   const groups = (result.groups || []) as Group[];
+  const screenTime = (result.screenTime || []) as ScreenTimeEntry[];
   const lastResetDate = (result.lastResetDate || '') as string;
 
-  // Reset at midnight
   const today = new Date().toISOString().split('T')[0];
   if (lastResetDate !== today) {
-    sites.forEach(s => s.timeSpentToday = 0);
+    sites.forEach(s => {
+      s.timeSpentToday = 0;
+      s.sessionTimeSpent = 0;
+    });
     groups.forEach(g => g.timeSpentToday = 0);
-    await chrome.storage.local.set({ sites, groups, lastResetDate: today });
+    // Reset screen time daily too
+    await chrome.storage.local.set({ sites, groups, screenTime: [], lastResetDate: today });
     return;
   }
 
+  if (!activeTabDomain) return;
+
   let changed = false;
+  let screenTimeChanged = false;
   const deltaMinutes = deltaSeconds / 60;
 
-  // Update site time
+  // Track global screen time for ALL visited sites
+  let entry = screenTime.find(e => e.domain === activeTabDomain);
+  if (!entry) {
+    entry = { domain: activeTabDomain, timeSpentToday: 0 };
+    screenTime.push(entry);
+  }
+  entry.timeSpentToday += deltaMinutes;
+  screenTimeChanged = true;
+
+  // Reset other sites' session time if they are not active
+  sites.forEach(s => {
+    if (s.domain !== activeTabDomain) {
+      s.sessionTimeSpent = 0;
+    }
+  });
+
   const site = sites.find(s => s.domain === activeTabDomain);
   if (site) {
-    const oldMinutes = site.timeSpentToday;
+    const oldDaily = site.timeSpentToday;
+    const oldSession = site.sessionTimeSpent;
+    
     site.timeSpentToday += deltaMinutes;
+    site.sessionTimeSpent += deltaMinutes;
     changed = true;
 
-    // Warning notification (5 mins and 1 min)
     if (site.limitMinutes > 0) {
-        if (oldMinutes < site.limitMinutes - 5 && site.timeSpentToday >= site.limitMinutes - 5) {
-            showNotification(`5 minutes remaining for ${activeTabDomain}`);
-        } else if (oldMinutes < site.limitMinutes - 1 && site.timeSpentToday >= site.limitMinutes - 1) {
-            showNotification(`1 minute remaining for ${activeTabDomain}`);
-        }
+      if (oldDaily < site.limitMinutes - 5 && site.timeSpentToday >= site.limitMinutes - 5) {
+        showNotification(`5 minutes left today for ${activeTabDomain}`);
+      } else if (oldDaily < site.limitMinutes - 1 && site.timeSpentToday >= site.limitMinutes - 1) {
+        showNotification(`1 minute left today for ${activeTabDomain}`);
+      }
     }
-  }
 
-  // Update group time
-  for (const group of groups) {
-    if (group.sites.includes(activeTabDomain)) {
-      const oldMinutes = group.timeSpentToday;
-      group.timeSpentToday += deltaMinutes;
-      changed = true;
-
-      if (group.limitMinutes > 0) {
-          if (oldMinutes < group.limitMinutes - 5 && group.timeSpentToday >= group.limitMinutes - 5) {
-              showNotification(`5 minutes remaining for group: ${group.name}`);
-          } else if (oldMinutes < group.limitMinutes - 1 && group.timeSpentToday >= group.limitMinutes - 1) {
-              showNotification(`1 minute remaining for group: ${group.name}`);
-          }
+    if (site.sessionLimitMinutes > 0) {
+      if (oldSession < site.sessionLimitMinutes - 2 && site.sessionTimeSpent >= site.sessionLimitMinutes - 2) {
+        showNotification(`Session ending in 2 minutes for ${activeTabDomain}`);
       }
     }
   }
 
+  for (const group of groups) {
+    if (group.sites.includes(activeTabDomain)) {
+      group.timeSpentToday += deltaMinutes;
+      changed = true;
+    }
+  }
+
+  const updates: any = {};
   if (changed) {
-    await chrome.storage.local.set({ sites, groups });
-    await checkAndRedirect(activeTabDomain, { sites, groups, lastResetDate });
+    updates.sites = sites;
+    updates.groups = groups;
+  }
+  if (screenTimeChanged) {
+    updates.screenTime = screenTime;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await chrome.storage.local.set(updates);
+    if (changed) {
+      await checkAndRedirect(activeTabDomain, { sites, groups, screenTime, lastResetDate });
+    }
   }
 }
 
 function showNotification(message: string) {
-    chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'favicon.svg',
-        title: 'Block-Ext Warning',
-        message: message,
-        priority: 2
-    });
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'favicon.svg',
+    title: 'Block-Ext',
+    message: message,
+    priority: 2
+  });
 }
 
-// Track active tab
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
@@ -152,32 +197,30 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   }
 });
 
-chrome.windows.onFocusChanged.addListener(async (windowId: number) => {
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     activeTabDomain = null;
   } else {
     try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab) {
-          activeTabDomain = getDomain(tab.url);
-        }
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab) {
+        activeTabDomain = getDomain(tab.url);
+      }
     } catch (err) {
-        console.error(err);
+      console.error(err);
     }
   }
   lastTickTime = Date.now();
 });
 
-// Tick every 10 seconds
 chrome.alarms.create('tick', { periodInMinutes: 10 / 60 });
-chrome.alarms.onAlarm.addListener((alarm: chrome.alarms.Alarm) => {
+chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'tick') {
     updateTime();
   }
 });
 
-// Initialization
 chrome.runtime.onInstalled.addListener(() => {
-    const today = new Date().toISOString().split('T')[0];
-    chrome.storage.local.set({ sites: [], groups: [], lastResetDate: today });
+  const today = new Date().toISOString().split('T')[0];
+  chrome.storage.local.set({ sites: [], groups: [], screenTime: [], lastResetDate: today });
 });
