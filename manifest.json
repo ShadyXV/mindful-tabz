@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Block-Ext: Focus & Time Manager",
+  "version": "1.0.0",
+  "description": "Block sites after reaching time limits. Manage groups and individual limits.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "notifications",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "options_page": "index.html",
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
