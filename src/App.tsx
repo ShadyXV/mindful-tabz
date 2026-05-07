@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, ArrowRight } from 'lucide-react'
 import { storageEngine } from './lib/StorageEngine'
+import { domainNormalizer } from './lib/DomainNormalizer'
 import type { Site, Group, ScreenTimeEntry } from './lib/StorageEngine'
 
 function App() {
@@ -39,8 +40,10 @@ function App() {
 
   const addSite = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newSite) return
-    const domain = newSite.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+    const domain = domainNormalizer.normalize(newSite)
+    if (!domain) return
+    if (sites.find(s => s.domain === domain)) return
+    
     await storageEngine.addSite(domain, parseInt(newSiteLimit), parseInt(newSessionLimit))
     setNewSite('')
   }

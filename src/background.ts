@@ -1,15 +1,6 @@
 import { focusTracker } from './lib/FocusTracker';
 import type { FocusEffect } from './lib/FocusTracker';
-
-function getDomain(url: string | undefined): string | null {
-  if (!url) return null;
-  try {
-    const hostname = new URL(url).hostname;
-    return hostname.replace(/^www\./, '');
-  } catch {
-    return null;
-  }
-}
+import { domainNormalizer } from './lib/DomainNormalizer';
 
 async function runTick() {
   const effects = await focusTracker.handleTick();
@@ -52,7 +43,7 @@ function showNotification(message: string) {
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    focusTracker.setActiveDomain(getDomain(tab.url));
+    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
   } catch (err) {
     console.error(err);
   }
@@ -60,7 +51,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) {
-    focusTracker.setActiveDomain(getDomain(tab.url));
+    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
   }
 });
 
@@ -71,7 +62,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab) {
-        focusTracker.setActiveDomain(getDomain(tab.url));
+        focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
       }
     } catch (err) {
       console.error(err);
