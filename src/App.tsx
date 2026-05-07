@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save } from 'lucide-react'
+import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, ArrowRight } from 'lucide-react'
 
 interface Site {
   domain: string;
@@ -7,6 +7,11 @@ interface Site {
   sessionLimitMinutes: number;
   timeSpentToday: number;
   sessionTimeSpent: number;
+}
+
+interface ScreenTimeEntry {
+  domain: string;
+  timeSpentToday: number;
 }
 
 interface Group {
@@ -20,7 +25,8 @@ interface Group {
 function App() {
   const [sites, setSites] = useState<Site[]>([])
   const [groups, setGroups] = useState<Group[]>([])
-  const [activeTab, setActiveTab] = useState<'sites' | 'groups'>('sites')
+  const [screenTime, setScreenTime] = useState<ScreenTimeEntry[]>([])
+  const [activeTab, setActiveTab] = useState<'sites' | 'groups' | 'screentime'>('sites')
   
   // Form States
   const [newSite, setNewSite] = useState('')
@@ -33,14 +39,16 @@ function App() {
   const [newGroupLimit, setNewGroupLimit] = useState('60')
 
   useEffect(() => {
-    chrome.storage.local.get(['sites', 'groups'], (result) => {
+    chrome.storage.local.get(['sites', 'groups', 'screenTime'], (result) => {
       if (result.sites) setSites(result.sites as Site[])
       if (result.groups) setGroups(result.groups as Group[])
+      if (result.screenTime) setScreenTime(result.screenTime as ScreenTimeEntry[])
     })
 
     const listener = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes.sites && changes.sites.newValue) setSites(changes.sites.newValue as Site[])
       if (changes.groups && changes.groups.newValue) setGroups(changes.groups.newValue as Group[])
+      if (changes.screenTime && changes.screenTime.newValue) setScreenTime(changes.screenTime.newValue as ScreenTimeEntry[])
     }
     chrome.storage.onChanged.addListener(listener)
     return () => chrome.storage.onChanged.removeListener(listener)
@@ -71,6 +79,19 @@ function App() {
     }]
     saveSites(updated)
     setNewSite('')
+  }
+
+  const quickAdd = (domain: string) => {
+    if (sites.find(s => s.domain === domain)) return
+    const updated = [...sites, { 
+      domain, 
+      limitMinutes: 30, 
+      sessionLimitMinutes: 10,
+      timeSpentToday: screenTime.find(e => e.domain === domain)?.timeSpentToday || 0,
+      sessionTimeSpent: 0
+    }]
+    saveSites(updated)
+    setActiveTab('sites')
   }
 
   const removeSite = (domain: string) => {
@@ -138,6 +159,9 @@ function App() {
     return `${mins}m ${secs}s`
   }
 
+  const sortedScreenTime = [...screenTime].sort((a, b) => b.timeSpentToday - a.timeSpentToday)
+  const totalScreenTime = screenTime.reduce((acc, curr) => acc + curr.timeSpentToday, 0)
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-8">
       <div className="max-w-5xl mx-auto">
@@ -152,21 +176,81 @@ function App() {
           </div>
           <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
             <button 
-              onClick={() => setActiveTab('sites')}
-              className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'sites' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              onClick={() => setActiveTab('screentime')}
+              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'screentime' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
+              <BarChart3 className="w-4 h-4" />
+              Screen Time
+            </button>
+            <button 
+              onClick={() => setActiveTab('sites')}
+              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'sites' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              <Globe className="w-4 h-4" />
               Manage Sites
             </button>
             <button 
               onClick={() => setActiveTab('groups')}
-              className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'groups' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'groups' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
+              <LayoutGrid className="w-4 h-4" />
               Groups
             </button>
           </div>
         </header>
 
-        {activeTab === 'sites' ? (
+        {activeTab === 'screentime' && (
+           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="bg-indigo-600/10 border border-indigo-500/20 p-8 rounded-3xl flex items-center justify-between">
+                <div>
+                   <h2 className="text-4xl font-black text-white">Total Screen Time</h2>
+                   <p className="text-indigo-400 font-bold mt-1 uppercase tracking-widest text-sm">Active Today</p>
+                </div>
+                <div className="text-5xl font-black text-indigo-400">
+                  {formatTime(totalScreenTime)}
+                </div>
+             </div>
+
+             <div className="grid grid-cols-1 gap-4">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest px-2">Websites Visited Today</h3>
+                {sortedScreenTime.map(entry => (
+                  <div key={entry.domain} className="bg-slate-900 p-5 rounded-2xl border border-slate-800 flex items-center justify-between group hover:border-slate-700 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-slate-800 p-3 rounded-xl">
+                        <Globe className="w-6 h-6 text-slate-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-lg">{entry.domain}</h4>
+                        <p className="text-indigo-400 font-mono text-sm">{formatTime(entry.timeSpentToday)} spent</p>
+                      </div>
+                    </div>
+                    
+                    {sites.find(s => s.domain === entry.domain) ? (
+                      <div className="flex items-center gap-2 text-emerald-500 font-bold bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Monitored
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => quickAdd(entry.domain)}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-indigo-900/20"
+                      >
+                        Quick Add to Block List
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {screenTime.length === 0 && (
+                   <div className="py-20 text-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
+                      No browsing data recorded yet today.
+                   </div>
+                )}
+             </div>
+           </div>
+        )}
+
+        {activeTab === 'sites' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <section className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-indigo-400">
@@ -262,7 +346,6 @@ function App() {
                       </div>
 
                       <div className="flex flex-1 max-w-md gap-8">
-                        {/* Daily Progress */}
                         <div className="flex-1 space-y-2">
                            <div className="flex justify-between text-xs">
                              <span className="text-slate-400 font-medium">Daily Limit</span>
@@ -276,7 +359,6 @@ function App() {
                            </div>
                         </div>
 
-                        {/* Session Progress */}
                         <div className="flex-1 space-y-2">
                            <div className="flex justify-between text-xs">
                              <span className="text-slate-400 font-medium">Session</span>
@@ -312,12 +394,14 @@ function App() {
               {sites.length === 0 && (
                 <div className="py-20 text-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
                   <p className="text-xl">Your watchlist is empty.</p>
-                  <p className="text-sm mt-2">Add sites above to start tracking your focus time.</p>
+                  <p className="text-sm mt-2">Add sites above or from Screen Time to start tracking.</p>
                 </div>
               )}
             </section>
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'groups' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <section className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-indigo-400">
