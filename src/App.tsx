@@ -1,26 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, ArrowRight } from 'lucide-react'
-
-interface Site {
-  domain: string;
-  limitMinutes: number;
-  sessionLimitMinutes: number;
-  timeSpentToday: number;
-  sessionTimeSpent: number;
-}
-
-interface ScreenTimeEntry {
-  domain: string;
-  timeSpentToday: number;
-}
-
-interface Group {
-  id: string;
-  name: string;
-  sites: string[];
-  limitMinutes: number;
-  timeSpentToday: number;
-}
+import { storageEngine } from './lib/StorageEngine'
+import type { Site, Group, ScreenTimeEntry } from './lib/StorageEngine'
 
 function App() {
   const [sites, setSites] = useState<Site[]>([])
@@ -39,63 +20,38 @@ function App() {
   const [newGroupLimit, setNewGroupLimit] = useState('60')
 
   useEffect(() => {
-    chrome.storage.local.get(['sites', 'groups', 'screenTime'], (result) => {
-      if (result.sites) setSites(result.sites as Site[])
-      if (result.groups) setGroups(result.groups as Group[])
-      if (result.screenTime) setScreenTime(result.screenTime as ScreenTimeEntry[])
+    // 1. Initial Load
+    storageEngine.getFullState().then(state => {
+      setSites(state.sites)
+      setGroups(state.groups)
+      setScreenTime(state.screenTime)
     })
 
-    const listener = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-      if (changes.sites && changes.sites.newValue) setSites(changes.sites.newValue as Site[])
-      if (changes.groups && changes.groups.newValue) setGroups(changes.groups.newValue as Group[])
-      if (changes.screenTime && changes.screenTime.newValue) setScreenTime(changes.screenTime.newValue as ScreenTimeEntry[])
-    }
-    chrome.storage.onChanged.addListener(listener)
-    return () => chrome.storage.onChanged.removeListener(listener)
+    // 2. Leverage: Subscription hides chrome.storage details
+    const unsubscribe = storageEngine.subscribe(state => {
+      setSites(state.sites)
+      setGroups(state.groups)
+      setScreenTime(state.screenTime)
+    })
+    
+    return unsubscribe
   }, [])
 
-  const saveSites = (newSites: Site[]) => {
-    setSites(newSites)
-    chrome.storage.local.set({ sites: newSites })
-  }
-
-  const saveGroups = (newGroups: Group[]) => {
-    setGroups(newGroups)
-    chrome.storage.local.set({ groups: newGroups })
-  }
-
-  const addSite = (e: React.FormEvent) => {
+  const addSite = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newSite) return
     const domain = newSite.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
-    if (sites.find(s => s.domain === domain)) return
-    
-    const updated = [...sites, { 
-      domain, 
-      limitMinutes: parseInt(newSiteLimit), 
-      sessionLimitMinutes: parseInt(newSessionLimit),
-      timeSpentToday: 0,
-      sessionTimeSpent: 0
-    }]
-    saveSites(updated)
+    await storageEngine.addSite(domain, parseInt(newSiteLimit), parseInt(newSessionLimit))
     setNewSite('')
   }
 
-  const quickAdd = (domain: string) => {
-    if (sites.find(s => s.domain === domain)) return
-    const updated = [...sites, { 
-      domain, 
-      limitMinutes: 30, 
-      sessionLimitMinutes: 10,
-      timeSpentToday: screenTime.find(e => e.domain === domain)?.timeSpentToday || 0,
-      sessionTimeSpent: 0
-    }]
-    saveSites(updated)
+  const quickAdd = async (domain: string) => {
+    await storageEngine.addSite(domain, 30, 10)
     setActiveTab('sites')
   }
 
-  const removeSite = (domain: string) => {
-    saveSites(sites.filter(s => s.domain !== domain))
+  const removeSite = async (domain: string) => {
+    await storageEngine.removeSite(domain)
   }
 
   const startEditing = (site: Site) => {
@@ -106,51 +62,25 @@ function App() {
     })
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingDomain) return
-    const updated = sites.map(s => {
-      if (s.domain === editingDomain) {
-        return { 
-          ...s, 
-          limitMinutes: parseInt(editForm.limit), 
-          sessionLimitMinutes: parseInt(editForm.sessionLimit) 
-        }
-      }
-      return s
-    })
-    saveSites(updated)
+    await storageEngine.updateSite(editingDomain, parseInt(editForm.limit), parseInt(editForm.sessionLimit))
     setEditingDomain(null)
   }
 
-  const addGroup = (e: React.FormEvent) => {
+  const addGroup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newGroupName) return
-    const updated = [...groups, { 
-      id: crypto.randomUUID(), 
-      name: newGroupName, 
-      sites: [], 
-      limitMinutes: parseInt(newGroupLimit), 
-      timeSpentToday: 0 
-    }]
-    saveGroups(updated)
+    await storageEngine.createGroup(newGroupName, parseInt(newGroupLimit))
     setNewGroupName('')
   }
 
-  const removeGroup = (id: string) => {
-    saveGroups(groups.filter(g => g.id !== id))
+  const removeGroup = async (id: string) => {
+    await storageEngine.removeGroup(id)
   }
 
-  const toggleSiteInGroup = (groupId: string, domain: string) => {
-    const updated = groups.map(g => {
-      if (g.id === groupId) {
-        const sites = g.sites.includes(domain) 
-          ? g.sites.filter(s => s !== domain) 
-          : [...g.sites, domain]
-        return { ...g, sites }
-      }
-      return g
-    })
-    saveGroups(updated)
+  const toggleSiteInGroup = async (groupId: string, domain: string) => {
+    await storageEngine.toggleSiteInGroup(groupId, domain)
   }
 
   const formatTime = (minutes: number) => {
@@ -241,11 +171,6 @@ function App() {
                     )}
                   </div>
                 ))}
-                {screenTime.length === 0 && (
-                   <div className="py-20 text-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
-                      No browsing data recorded yet today.
-                   </div>
-                )}
              </div>
            </div>
         )}
@@ -391,12 +316,6 @@ function App() {
                   )}
                 </div>
               ))}
-              {sites.length === 0 && (
-                <div className="py-20 text-center text-slate-500 border-2 border-dashed border-slate-800 rounded-3xl">
-                  <p className="text-xl">Your watchlist is empty.</p>
-                  <p className="text-sm mt-2">Add sites above or from Screen Time to start tracking.</p>
-                </div>
-              )}
             </section>
           </div>
         )}
