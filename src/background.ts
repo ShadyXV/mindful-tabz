@@ -1,7 +1,5 @@
-import { storageEngine } from './lib/StorageEngine';
-
-let activeTabDomain: string | null = null;
-let lastTickTime = Date.now();
+import { focusTracker } from './lib/FocusTracker';
+import type { FocusEffect } from './lib/FocusTracker';
 
 function getDomain(url: string | undefined): string | null {
   if (!url) return null;
@@ -13,38 +11,48 @@ function getDomain(url: string | undefined): string | null {
   }
 }
 
-async function updateTime() {
-  const now = Date.now();
-  const deltaSeconds = (now - lastTickTime) / 1000;
-  lastTickTime = now;
+async function runTick() {
+  const effects = await focusTracker.handleTick();
+  executeEffects(effects);
+}
 
-  // 1. Locality of reset logic: one method call handles the check
-  const didReset = await storageEngine.resetIfNewDay();
-  if (didReset) return;
-
-  if (!activeTabDomain) return;
-
-  const deltaMinutes = deltaSeconds / 60;
-
-  // 2. Leverage: Unified activity recording hides multiple state updates
-  const { shouldBlock, reason } = await storageEngine.recordActivity(activeTabDomain, deltaMinutes);
-
-  if (shouldBlock) {
-    const tabs = await chrome.tabs.query({ url: [`*://*.${activeTabDomain}/*`] });
-    for (const tab of tabs) {
-      if (tab.id) {
-        chrome.tabs.update(tab.id, { url: chrome.runtime.getURL(`blocked.html?site=${activeTabDomain}&reason=${reason}`) });
-      }
+function executeEffects(effects: FocusEffect[]) {
+  for (const effect of effects) {
+    switch (effect.type) {
+      case 'BLOCK':
+        blockDomain(effect.domain, effect.reason);
+        break;
+      case 'NOTIFY':
+        showNotification(effect.message);
+        break;
     }
   }
 }
 
-// Track active tab
+async function blockDomain(domain: string, reason: string) {
+  const tabs = await chrome.tabs.query({ url: [`*://*.${domain}/*`] });
+  for (const tab of tabs) {
+    if (tab.id) {
+      chrome.tabs.update(tab.id, { url: chrome.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`) });
+    }
+  }
+}
+
+function showNotification(message: string) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'favicon.svg',
+    title: 'Block-Ext',
+    message: message,
+    priority: 2
+  });
+}
+
+// Event Listeners: Thin relays to the FocusTracker
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    activeTabDomain = getDomain(tab.url);
-    lastTickTime = Date.now();
+    focusTracker.setActiveDomain(getDomain(tab.url));
   } catch (err) {
     console.error(err);
   }
@@ -52,34 +60,32 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) {
-    activeTabDomain = getDomain(tab.url);
-    lastTickTime = Date.now();
+    focusTracker.setActiveDomain(getDomain(tab.url));
   }
 });
 
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    activeTabDomain = null;
+    focusTracker.setActiveDomain(null);
   } else {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab) {
-        activeTabDomain = getDomain(tab.url);
+        focusTracker.setActiveDomain(getDomain(tab.url));
       }
     } catch (err) {
       console.error(err);
     }
   }
-  lastTickTime = Date.now();
 });
 
 chrome.alarms.create('tick', { periodInMinutes: 10 / 60 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'tick') {
-    updateTime();
+    runTick();
   }
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  storageEngine.resetIfNewDay();
+  runTick();
 });
