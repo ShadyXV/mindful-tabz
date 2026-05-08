@@ -1,18 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Mindful Tabz: Focus & Time Manager",
+  "name": "Mindful Tabz: Tabs Screen Time Manager",
   "version": "1.0.0",
-  "description": "Block sites after reaching time limits. Manage groups and individual limits.",
-  "permissions": [
-    "storage",
-    "tabs",
-    "alarms",
-    "notifications",
-    "offscreen"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "description": "When the allotted moment passes, let the portal close of its own accord.",
+  "permissions": ["storage", "tabs", "alarms", "notifications", "offscreen"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "index.html"
   },
