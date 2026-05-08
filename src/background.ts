@@ -2,7 +2,19 @@ import { focusTracker } from './lib/FocusTracker';
 import type { FocusEffect } from './lib/FocusTracker';
 import { domainNormalizer } from './lib/DomainNormalizer';
 
+async function syncActiveTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab) {
+      focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
+    }
+  } catch (err) {
+    console.error('Failed to sync active tab:', err);
+  }
+}
+
 async function runTick() {
+  await syncActiveTab();
   const effects = await focusTracker.handleTick();
   executeEffects(effects);
 }
@@ -80,3 +92,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onInstalled.addListener(() => {
   runTick();
 });
+
+// Initialize state on boot (Service Worker wake-up)
+syncActiveTab();
