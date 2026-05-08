@@ -107,11 +107,14 @@ function App() {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-8">
       <div className="max-w-5xl mx-auto">
         <header className="flex items-center justify-between mb-12">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-lg">
+          <div 
+            className="flex items-center gap-3 cursor-pointer group"
+            onClick={openDashboard}
+          >
+            <div className="bg-indigo-600 p-2 rounded-lg group-hover:bg-indigo-500 transition-colors">
               <Shield className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 group-hover:from-white group-hover:to-white transition-all">
               Mindful Tabz
             </h1>
           </div>
