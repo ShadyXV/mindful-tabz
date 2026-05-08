@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
-import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, Settings } from 'lucide-react'
+import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, Settings, Activity, Database, Cpu } from 'lucide-react'
 import { storageEngine } from './lib/StorageEngine'
 import { domainNormalizer } from './lib/DomainNormalizer'
-import type { Site, Group, ScreenTimeEntry } from './lib/StorageEngine'
+import type { Site, Group, ScreenTimeEntry, AnalyticsSnapshot } from './lib/StorageEngine'
 
 function Dashboard() {
   const [sites, setSites] = useState<Site[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [screenTime, setScreenTime] = useState<ScreenTimeEntry[]>([])
+  const [snapshots, setSnapshots] = useState<AnalyticsSnapshot[]>([])
   const [activeTab, setActiveTab] = useState<'screentime' | 'sites' | 'groups' | 'settings'>('screentime')
   
   // Form States
@@ -27,16 +28,46 @@ function Dashboard() {
       setSites(state.sites)
       setGroups(state.groups)
       setScreenTime(state.screenTime)
+      setSnapshots(state.analyticsSnapshots)
     })
 
     const unsubscribe = storageEngine.subscribe(state => {
       setSites(state.sites)
       setGroups(state.groups)
       setScreenTime(state.screenTime)
+      setSnapshots(state.analyticsSnapshots)
     })
     
     return unsubscribe
   }, [])
+
+  const takeSnapshot = async () => {
+    try {
+      // 1. Get DB usage
+      const bytes = await new Promise<number>((resolve) => {
+        chrome.storage.local.getBytesInUse(null, (bytes) => resolve(bytes));
+      });
+
+      // 2. Get JS Heap usage
+      // @ts-ignore - performance.memory is Chrome specific
+      const memoryInfo = (performance as any).memory;
+      const memory = memoryInfo ? memoryInfo.usedJSHeapSize : 0;
+
+      console.log('Taking snapshot...', { bytes, memory, memoryInfo });
+
+      await storageEngine.saveAnalyticsSnapshot({
+        timestamp: Date.now(),
+        jsHeapMB: Math.round(memory / (1024 * 1024) * 100) / 100,
+        dbUsageKB: Math.round(bytes / 1024 * 100) / 100
+      });
+      
+      if (!memoryInfo) {
+        console.warn('performance.memory is not available in this environment. JS Heap will report as 0.');
+      }
+    } catch (err) {
+      console.error('Failed to take snapshot:', err);
+    }
+  }
 
   const addSite = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -480,6 +511,99 @@ function Dashboard() {
                      </div>
                    </div>
                  </div>
+              </section>
+
+              <section className="bg-slate-900 p-12 rounded-[3rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-8">
+                  <div>
+                    <h2 className="text-3xl font-black text-white mb-2 tracking-tight flex items-center gap-3">
+                      <Activity className="text-indigo-400 w-8 h-8" />
+                      App Performance
+                    </h2>
+                    <p className="text-slate-500 font-bold">Monitor resource consumption and extension health.</p>
+                  </div>
+                  <button 
+                    onClick={takeSnapshot}
+                    className="px-10 py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-900/40 transform hover:-translate-y-1 active:translate-y-0 flex items-center gap-3 uppercase tracking-widest text-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Take Snapshot
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                  <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 flex items-center gap-8 relative group">
+                      <div className="bg-indigo-600/10 p-5 rounded-3xl">
+                        <Cpu className="w-10 h-10 text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-slate-500 font-black uppercase tracking-widest text-[10px] mb-1">Current JS Heap</p>
+                        <h3 className="text-4xl font-black text-white tracking-tighter">
+                          {snapshots.length > 0 ? (
+                            snapshots[snapshots.length - 1].jsHeapMB > 0 ? (
+                              <>
+                                {snapshots[snapshots.length - 1].jsHeapMB} <span className="text-xl text-slate-500 font-bold ml-1">MB</span>
+                              </>
+                            ) : (
+                              <span className="text-slate-600 text-2xl uppercase tracking-widest">N/A</span>
+                            )
+                          ) : '---'}
+                        </h3>
+                        {snapshots.length > 0 && snapshots[snapshots.length - 1].jsHeapMB === 0 && (
+                          <p className="text-[9px] text-slate-700 font-bold mt-1 uppercase">Browser restricted access</p>
+                        )}
+                      </div>
+                   </div>
+                   <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 flex items-center gap-8">
+                      <div className="bg-emerald-600/10 p-5 rounded-3xl">
+                        <Database className="w-10 h-10 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-slate-500 font-black uppercase tracking-widest text-[10px] mb-1">Database Size</p>
+                        <h3 className="text-4xl font-black text-white tracking-tighter">
+                          {snapshots.length > 0 ? (
+                            <>
+                              {snapshots[snapshots.length - 1].dbUsageKB} <span className="text-xl text-slate-500 font-bold ml-1">KB</span>
+                            </>
+                          ) : '---'}
+                        </h3>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-6">
+                   <h3 className="text-xl font-black text-slate-200 px-4">Performance History</h3>
+                   <div className="bg-slate-950/50 rounded-[2.5rem] border border-slate-800 p-8">
+                      <div className="flex items-end gap-2 h-48 mb-8 px-4 border-b border-slate-800 pb-2">
+                        {snapshots.map((s) => {
+                          const maxHeap = Math.max(...snapshots.map(s => s.jsHeapMB), 1);
+                          const height = (s.jsHeapMB / maxHeap) * 100;
+                          return (
+                            <div 
+                              key={s.id} 
+                              className="flex-1 bg-indigo-500/40 hover:bg-indigo-500 rounded-t-sm transition-all relative group/bar"
+                              style={{ height: `${height}%` }}
+                            >
+                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none font-bold">
+                                  {s.jsHeapMB} MB
+                               </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        {snapshots.slice().reverse().map(s => (
+                          <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-slate-800/50 text-xs">
+                             <span className="text-slate-500 font-black">{new Date(s.timestamp).toLocaleTimeString()}</span>
+                             <div className="flex gap-8">
+                               <span className="text-indigo-400 font-bold"><span className="text-slate-600 mr-2 uppercase tracking-widest text-[8px]">Heap:</span> {s.jsHeapMB} MB</span>
+                               <span className="text-emerald-400 font-bold"><span className="text-slate-600 mr-2 uppercase tracking-widest text-[8px]">DB:</span> {s.dbUsageKB} KB</span>
+                             </div>
+                          </div>
+                        ))}
+                      </div>
+                   </div>
+                </div>
               </section>
               
               <footer className="text-center py-10 opacity-30">

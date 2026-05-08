@@ -20,10 +20,18 @@ export interface Group {
   timeSpentToday: number;
 }
 
+export interface AnalyticsSnapshot {
+  id: string;
+  timestamp: number;
+  jsHeapMB: number;
+  dbUsageKB: number;
+}
+
 export interface StorageData {
   sites: Site[];
   groups: Group[];
   screenTime: ScreenTimeEntry[];
+  analyticsSnapshots: AnalyticsSnapshot[];
   lastResetDate: string;
 }
 
@@ -31,17 +39,25 @@ export type StorageChangeCallback = (data: StorageData) => void;
 
 class StorageEngine {
   private async getData(): Promise<StorageData> {
-    const result = await chrome.storage.local.get(['sites', 'groups', 'screenTime', 'lastResetDate']);
+    const result = await chrome.storage.local.get(['sites', 'groups', 'screenTime', 'analyticsSnapshots', 'lastResetDate']);
     return {
       sites: (result.sites || []) as Site[],
       groups: (result.groups || []) as Group[],
       screenTime: (result.screenTime || []) as ScreenTimeEntry[],
+      analyticsSnapshots: (result.analyticsSnapshots || []) as AnalyticsSnapshot[],
       lastResetDate: (result.lastResetDate || '') as string
     };
   }
 
   private async saveData(data: Partial<StorageData>): Promise<void> {
     await chrome.storage.local.set(data);
+  }
+
+  async saveAnalyticsSnapshot(snapshot: Omit<AnalyticsSnapshot, 'id'>): Promise<void> {
+    const data = await this.getData();
+    const newSnapshot = { ...snapshot, id: crypto.randomUUID() };
+    const newSnapshots = [...data.analyticsSnapshots, newSnapshot].slice(-100);
+    await this.saveData({ analyticsSnapshots: newSnapshots });
   }
 
   /**
