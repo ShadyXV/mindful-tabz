@@ -45,7 +45,7 @@ function showNotification(message: string) {
   chrome.notifications.create({
     type: 'basic',
     iconUrl: 'favicon.svg',
-    title: 'Block-Ext',
+    title: 'Mindful Tabz',
     message: message,
     priority: 2
   });

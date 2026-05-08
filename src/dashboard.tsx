@@ -142,7 +142,7 @@ function Dashboard() {
             </div>
             <div>
               <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-slate-500 tracking-tight">
-                Block-Ext
+                Mindful Tabz
               </h1>
               <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1 px-1">Control Center</p>
             </div>
@@ -474,7 +474,7 @@ function Dashboard() {
                     <Settings className="w-64 h-64" />
                  </div>
                  <h2 className="text-3xl font-black mb-4 text-white tracking-tight">Configuration</h2>
-                 <p className="text-slate-500 font-bold text-lg mb-12 max-w-2xl">Tailor Block-Ext to your specific productivity workflows and data management preferences.</p>
+                 <p className="text-slate-500 font-bold text-lg mb-12 max-w-2xl">Tailor Mindful Tabz to your specific productivity workflows and data management preferences.</p>
                  
                  <div className="space-y-8">
                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-10 bg-slate-950 rounded-[2.5rem] border border-slate-800 group hover:border-red-500/20 transition-all">
@@ -499,7 +499,7 @@ function Dashboard() {
                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-10 bg-slate-950 rounded-[2.5rem] border border-slate-800">
                      <div className="mb-6 md:mb-0">
                        <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Support & Development</h3>
-                       <p className="text-slate-500 font-medium">Block-Ext is an open-source tool built for digital well-being.</p>
+                       <p className="text-slate-500 font-medium">Mindful Tabz is an open-source tool built for digital well-being.</p>
                      </div>
                      <div className="flex gap-4">
                         <button className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-black rounded-2xl transition-all uppercase tracking-widest text-xs">
@@ -607,7 +607,7 @@ function Dashboard() {
               </section>
               
               <footer className="text-center py-10 opacity-30">
-                 <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.5em]">Block-Ext Active Protection Engine v1.0.0</p>
+                 <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.5em]">Mindful Tabz Active Protection Engine v1.0.0</p>
               </footer>
             </div>
           )}

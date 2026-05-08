@@ -112,7 +112,7 @@ function App() {
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-              Block-Ext
+              Mindful Tabz
             </h1>
           </div>
           <div className="flex items-center gap-4">

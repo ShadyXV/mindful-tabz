@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Block-Ext: Focus & Time Manager",
+  "name": "Mindful Tabz: Focus & Time Manager",
   "version": "1.0.0",
   "description": "Block sites after reaching time limits. Manage groups and individual limits.",
   "permissions": [

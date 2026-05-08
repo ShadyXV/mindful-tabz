@@ -96,7 +96,7 @@ const Blocked = () => {
 
         <div className="pt-4 flex items-center justify-center gap-2 text-slate-600">
             <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-xs font-bold uppercase tracking-widest">Block-Ext Active Protection</span>
+            <span className="text-xs font-bold uppercase tracking-widest">Mindful Tabz Active Protection</span>
         </div>
       </div>
     </div>
