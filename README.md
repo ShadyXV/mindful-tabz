@@ -1,73 +1,53 @@
-# React + TypeScript + Vite
+# Mindful Tabz: Focus & Time Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mindful Tabz is an open-source browser extension designed for digital well-being. It helps you track your screen time, set daily limits for specific domains, and organize them into groups to maintain focus.
 
-Currently, two official plugins are available:
+## 🛡️ Privacy First: Your Data is Your Own
+Mindful Tabz is built on the philosophy that **your data belongs to you**. 
+- **No External Servers:** Your browsing habits and limits are stored locally on your machine using `chrome.storage.local`.
+- **Open Source:** Build and use your own version. Auditable, transparent, and private by design.
+- **Offline First:** Works entirely without an internet connection.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Key Features
+- **Site Blocking:** Set daily and session-based time limits for distracting websites.
+- **Resource Groups:** Group domains (e.g., "Social Media") and set a collective time quota.
+- **Real-time Analytics:** Track exactly where your time goes with live-updating charts.
+- **Beautiful UI:** A modern, dark-themed interface built with React and Tailwind CSS.
 
-## React Compiler
+## 🏗️ Code Structure
+The project is built with **React**, **TypeScript**, and **Vite**, using a clean architecture to separate logic from UI.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### `/src`
+- **`App.tsx`**: The main entry point for the extension popup.
+- **`dashboard.tsx`**: The full-page dashboard for management and deep analytics.
+- **`background.ts`**: The extension's service worker that handles time tracking and tab blocking logic.
+- **`blocked.tsx`**: The custom "Time's Up" page shown when a limit is reached.
 
-## Expanding the ESLint configuration
+### `/src/lib`
+- **`StorageEngine.ts`**: The core data layer. It manages all interactions with `chrome.storage.local`, including state persistence and event subscriptions.
+- **`FocusTracker.ts`**: Responsible for the precision tracking of active tabs. It calculates time spent and triggers blocking when limits are exceeded.
+- **`DomainNormalizer.ts`**: Ensures consistency across URLs (e.g., stripping subdomains or protocols).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build the project:
+   ```bash
+   npm run build
+   ```
+4. Load into Chrome/Edge:
+   - Open `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked" and select the `dist` folder.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📈 Roadmap & Contributions
+Mindful Tabz is an evolving project. I add more features as I use it more. Contributions are welcome! Whether it's a bug fix, a new feature, or improving the UI, feel free to open a PR.
