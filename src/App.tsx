@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, ArrowRight } from 'lucide-react'
+import { Plus, Trash2, Clock, Shield, Globe, LayoutGrid, CheckCircle2, Edit2, X, Save, BarChart3, ArrowRight, ExternalLink } from 'lucide-react'
 import { storageEngine } from './lib/StorageEngine'
 import { domainNormalizer } from './lib/DomainNormalizer'
 import type { Site, Group, ScreenTimeEntry } from './lib/StorageEngine'
@@ -37,6 +37,14 @@ function App() {
     
     return unsubscribe
   }, [])
+
+  const openDashboard = () => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage()
+    } else {
+      window.open(chrome.runtime.getURL('dashboard.html'))
+    }
+  }
 
   const addSite = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,28 +115,38 @@ function App() {
               Block-Ext
             </h1>
           </div>
-          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-4">
             <button 
-              onClick={() => setActiveTab('screentime')}
-              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'screentime' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              onClick={openDashboard}
+              className="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 transition-all flex items-center gap-2 text-sm font-bold"
+              title="Open Full Dashboard"
             >
-              <BarChart3 className="w-4 h-4" />
-              Screen Time
+              <ExternalLink className="w-4 h-4" />
+              <span className="hidden sm:inline">Dashboard</span>
             </button>
-            <button 
-              onClick={() => setActiveTab('sites')}
-              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'sites' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <Globe className="w-4 h-4" />
-              Manage Sites
-            </button>
-            <button 
-              onClick={() => setActiveTab('groups')}
-              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'groups' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Groups
-            </button>
+            <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <button 
+                onClick={() => setActiveTab('screentime')}
+                className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'screentime' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Screen Time
+              </button>
+              <button 
+                onClick={() => setActiveTab('sites')}
+                className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'sites' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <Globe className="w-4 h-4" />
+                Manage Sites
+              </button>
+              <button 
+                onClick={() => setActiveTab('groups')}
+                className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'groups' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Groups
+              </button>
+            </div>
           </div>
         </header>
 

@@ -17,6 +17,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         blocked: resolve(__dirname, 'blocked.html'),
+        dashboard: resolve(__dirname, 'dashboard.html'),
       },
     },
   },
