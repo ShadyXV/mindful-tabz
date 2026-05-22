@@ -3,16 +3,12 @@
   "name": "Mindful Tabz: Tabs Screen Time Manager",
   "version": "1.0.0",
   "description": "When the allotted moment passes, let the portal close of its own accord.",
-  "permissions": ["storage", "tabs", "alarms", "notifications", "offscreen"],
+  "permissions": ["storage", "tabs", "alarms", "notifications"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "index.html"
   },
   "options_page": "dashboard.html",
-  "background": {
-    "service_worker": "src/background.ts",
-    "type": "module"
-  },
   "web_accessible_resources": [
     {
       "resources": ["blocked.html"],

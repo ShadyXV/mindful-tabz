@@ -1,0 +1,12 @@
+{
+  "background": {
+    "scripts": ["src/background.ts"],
+    "type": "module"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "mindful-tabz@extension",
+      "strict_min_version": "109.0"
+    }
+  }
+}

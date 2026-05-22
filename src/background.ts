@@ -1,97 +1,98 @@
-import { focusTracker } from './lib/FocusTracker';
-import type { FocusEffect } from './lib/FocusTracker';
-import { domainNormalizer } from './lib/DomainNormalizer';
+import browser from './browser/api'
+import { focusTracker } from './lib/FocusTracker'
+import type { FocusEffect } from './lib/FocusTracker'
+import { domainNormalizer } from './lib/DomainNormalizer'
 
 async function syncActiveTab() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true })
     if (tab) {
-      focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
+      focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
     }
   } catch (err) {
-    console.error('Failed to sync active tab:', err);
+    console.error('Failed to sync active tab:', err)
   }
 }
 
 async function runTick() {
-  await syncActiveTab();
-  const effects = await focusTracker.handleTick();
-  executeEffects(effects);
+  await syncActiveTab()
+  const effects = await focusTracker.handleTick()
+  executeEffects(effects)
 }
 
 function executeEffects(effects: FocusEffect[]) {
   for (const effect of effects) {
     switch (effect.type) {
       case 'BLOCK':
-        blockDomain(effect.domain, effect.reason);
-        break;
+        blockDomain(effect.domain, effect.reason)
+        break
       case 'NOTIFY':
-        showNotification(effect.message);
-        break;
+        showNotification(effect.message)
+        break
     }
   }
 }
 
 async function blockDomain(domain: string, reason: string) {
-  const tabs = await chrome.tabs.query({ url: [`*://*.${domain}/*`] });
+  const tabs = await browser.tabs.query({ url: [`*://*.${domain}/*`] })
   for (const tab of tabs) {
     if (tab.id) {
-      chrome.tabs.update(tab.id, { url: chrome.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`) });
+      browser.tabs.update(tab.id, {
+        url: browser.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`),
+      })
     }
   }
 }
 
 function showNotification(message: string) {
-  chrome.notifications.create({
+  browser.notifications.create({
     type: 'basic',
     iconUrl: 'favicon.svg',
     title: 'Mindful Tabz',
     message: message,
-    priority: 2
-  });
+    priority: 2,
+  })
 }
 
-// Event Listeners: Thin relays to the FocusTracker
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
+browser.tabs.onActivated.addListener(async activeInfo => {
   try {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
-    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
+    const tab = await browser.tabs.get(activeInfo.tabId)
+    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
   } catch (err) {
-    console.error(err);
+    console.error(err)
   }
-});
+})
 
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) {
-    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
+    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
   }
-});
+})
 
-chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    focusTracker.setActiveDomain(null);
+browser.windows.onFocusChanged.addListener(async windowId => {
+  if (windowId === browser.windows.WINDOW_ID_NONE) {
+    focusTracker.setActiveDomain(null)
   } else {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
       if (tab) {
-        focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url));
+        focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
       }
     } catch (err) {
-      console.error(err);
+      console.error(err)
     }
   }
-});
+})
 
-chrome.alarms.create('tick', { periodInMinutes: 10 / 60 });
-chrome.alarms.onAlarm.addListener((alarm) => {
+browser.alarms.create('tick', { periodInMinutes: 10 / 60 })
+browser.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === 'tick') {
-    runTick();
+    runTick()
   }
-});
+})
 
-chrome.runtime.onInstalled.addListener(() => {
-  runTick();
-});
+browser.runtime.onInstalled.addListener(() => {
+  runTick()
+})
 
-// Initialize state on boot (Service Worker wake-up)
-syncActiveTab();
+syncActiveTab()

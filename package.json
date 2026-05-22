@@ -4,23 +4,29 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "BROWSER=chrome vite",
+    "dev:firefox": "BROWSER=firefox vite",
+    "build": "npm run build:chrome",
+    "build:chrome": "BROWSER=chrome tsc -b && BROWSER=chrome vite build",
+    "build:firefox": "BROWSER=firefox tsc -b && BROWSER=firefox vite build",
+    "build:safari": "BROWSER=safari tsc -b && BROWSER=safari vite build && xcrun safari-web-extension-converter dist/safari --project-location safari-xcode/ --app-name MindfulTabz --no-prompt",
+    "build:all": "npm run build:chrome && npm run build:firefox",
+    "package:firefox": "npx web-ext build --source-dir dist/firefox --artifacts-dir dist/packages",
+    "lint": "eslint ."
   },
   "dependencies": {
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.4.0",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/chrome": "^0.1.42",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/webextension-polyfill": "^0.12.5",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "eslint": "^10.2.1",
@@ -32,6 +38,7 @@
     "tailwindcss": "^4.0.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vite-plugin-web-extension": "^4.5.1"
   }
 }
