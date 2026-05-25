@@ -4,15 +4,17 @@ import { formatTime } from '../../utils/time'
 import type { ScreenTimeEntry } from '../../types'
 
 export function BlockedScreen() {
-  const [site, setSite] = React.useState('')
-  const [reason, setReason] = React.useState('daily')
+  const [site] = React.useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('site') || 'this website'
+  })
+  const [reason] = React.useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('reason') || 'daily'
+  })
   const [stats, setStats] = React.useState<ScreenTimeEntry[]>([])
 
   React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setSite(params.get('site') || 'this website')
-    setReason(params.get('reason') || 'daily')
-
     storageEngine.getFullState().then(data => {
       setStats(data.screenTime.sort((a, b) => b.timeSpentToday - a.timeSpentToday))
     })

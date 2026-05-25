@@ -18,7 +18,7 @@ const TABS = [
 ] as const
 
 export function DashboardRoot() {
-  const { sites, groups, screenTime, snapshots } = useStorageState()
+  const { sites, groups, screenTime, snapshots, history } = useStorageState()
   const [activeTab, setActiveTab] = useState<DashboardTab>('screentime')
 
   const quickAdd = async (domain: string) => {
@@ -51,7 +51,7 @@ export function DashboardRoot() {
 
         <main className="min-h-[600px]">
           {activeTab === 'screentime' && (
-            <StatsView sites={sites} screenTime={screenTime} onQuickAdd={quickAdd} />
+            <StatsView sites={sites} screenTime={screenTime} history={history} onQuickAdd={quickAdd} />
           )}
           {activeTab === 'sites' && <BlockListView sites={sites} />}
           {activeTab === 'groups' && <GroupsView sites={sites} groups={groups} />}

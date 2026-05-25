@@ -4,6 +4,7 @@ import type {
   ScreenTimeEntry,
   Group,
   AnalyticsSnapshot,
+  HistoryRecord,
   StorageData,
   StorageChangeCallback,
 } from '../types'
@@ -13,8 +14,16 @@ export type {
   ScreenTimeEntry,
   Group,
   AnalyticsSnapshot,
+  HistoryRecord,
   StorageData,
   StorageChangeCallback,
+}
+
+function getLocalDateString(): string {
+  const d = new Date()
+  const offset = d.getTimezoneOffset()
+  const localDate = new Date(d.getTime() - (offset * 60 * 1000))
+  return localDate.toISOString().split('T')[0]
 }
 
 class StorageEngine {
@@ -25,6 +34,7 @@ class StorageEngine {
       'screenTime',
       'analyticsSnapshots',
       'lastResetDate',
+      'history',
     ])
     return {
       sites: (result.sites || []) as Site[],
@@ -32,6 +42,7 @@ class StorageEngine {
       screenTime: (result.screenTime || []) as ScreenTimeEntry[],
       analyticsSnapshots: (result.analyticsSnapshots || []) as AnalyticsSnapshot[],
       lastResetDate: (result.lastResetDate || '') as string,
+      history: (result.history || []) as HistoryRecord[],
     }
   }
 
@@ -54,12 +65,31 @@ class StorageEngine {
     let shouldBlock = false
     let reason: string | null = null
 
+    // Update daily screenTime
     let screenEntry = data.screenTime.find(e => e.domain === domain)
     if (!screenEntry) {
       screenEntry = { domain, timeSpentToday: 0 }
       data.screenTime.push(screenEntry)
     }
     screenEntry.timeSpentToday += deltaMinutes
+
+    // Record to rolling hourly history
+    const today = getLocalDateString()
+    const currentHour = new Date().getHours()
+    let historyEntry = data.history.find(h => h.date === today && h.hour === currentHour && h.domain === domain)
+    if (!historyEntry) {
+      historyEntry = { date: today, hour: currentHour, domain, timeSpent: 0 }
+      data.history.push(historyEntry)
+    }
+    historyEntry.timeSpent += deltaMinutes
+
+    // Prune history to last 30 days
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - 30)
+    const cutoffOffset = cutoffDate.getTimezoneOffset()
+    const cutoffLocal = new Date(cutoffDate.getTime() - (cutoffOffset * 60 * 1000))
+    const cutoffStr = cutoffLocal.toISOString().split('T')[0]
+    data.history = data.history.filter(h => h.date >= cutoffStr)
 
     const site = data.sites.find(s => s.domain === domain)
     if (site) {
@@ -97,7 +127,7 @@ class StorageEngine {
 
   async resetIfNewDay(): Promise<boolean> {
     const data = await this.getData()
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
 
     if (data.lastResetDate !== today) {
       data.sites.forEach(s => {
