@@ -2,12 +2,50 @@ import browser from './browser/api'
 import { focusTracker } from './lib/FocusTracker'
 import type { FocusEffect } from './lib/FocusTracker'
 import { domainNormalizer } from './lib/DomainNormalizer'
+import { storageEngine } from './lib/StorageEngine'
+
+function formatTime(minutes: number): string {
+  if (minutes < 1) return '<1m'
+  const h = Math.floor(minutes / 60)
+  const m = Math.floor(minutes % 60)
+  if (h > 0) return `${h}h${m > 0 ? `${m}m` : ''}`
+  return `${m}m`
+}
+
+async function updateBadge(activeDomain: string | null) {
+  if (!activeDomain) {
+    await browser.action.setBadgeText({ text: '' })
+    return
+  }
+
+  const state = await storageEngine.getFullState()
+  const site = state.sites.find(s => s.domain === activeDomain)
+
+  if (site) {
+    // Site is in the block list
+    const remainingDaily = Math.max(0, site.limitMinutes - site.timeSpentToday)
+    const remainingSession = Math.max(0, site.sessionLimitMinutes - site.sessionTimeSpent)
+    const remainingTime = Math.min(remainingDaily, remainingSession)
+
+    const color = remainingTime < 2 ? '#EF4444' : '#3B82F6' // Red if < 2 mins, else Blue
+    
+    await browser.action.setBadgeBackgroundColor({ color })
+    await browser.action.setBadgeText({ text: formatTime(remainingTime) })
+  } else {
+    // Site is not in the block list, do not show any badge
+    await browser.action.setBadgeText({ text: '' })
+  }
+}
 
 async function syncActiveTab() {
   try {
     const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true })
     if (tab) {
-      focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
+      const domain = domainNormalizer.normalize(tab.url)
+      focusTracker.setActiveDomain(domain)
+      await updateBadge(domain)
+    } else {
+      await updateBadge(null)
     }
   } catch (err) {
     console.error('Failed to sync active tab:', err)
@@ -57,26 +95,35 @@ function showNotification(message: string) {
 browser.tabs.onActivated.addListener(async activeInfo => {
   try {
     const tab = await browser.tabs.get(activeInfo.tabId)
-    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
+    const domain = domainNormalizer.normalize(tab.url)
+    focusTracker.setActiveDomain(domain)
+    await updateBadge(domain)
   } catch (err) {
     console.error(err)
   }
 })
 
-browser.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) {
-    focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
+    const domain = domainNormalizer.normalize(tab.url)
+    focusTracker.setActiveDomain(domain)
+    await updateBadge(domain)
   }
 })
 
 browser.windows.onFocusChanged.addListener(async windowId => {
   if (windowId === browser.windows.WINDOW_ID_NONE) {
     focusTracker.setActiveDomain(null)
+    await updateBadge(null)
   } else {
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
       if (tab) {
-        focusTracker.setActiveDomain(domainNormalizer.normalize(tab.url))
+        const domain = domainNormalizer.normalize(tab.url)
+        focusTracker.setActiveDomain(domain)
+        await updateBadge(domain)
+      } else {
+        await updateBadge(null)
       }
     } catch (err) {
       console.error(err)

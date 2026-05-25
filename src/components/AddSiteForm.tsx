@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { Plus, Globe, Clock } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Plus, Globe, Clock, ListOrdered } from 'lucide-react'
 import { domainNormalizer } from '../lib/DomainNormalizer'
+import browser from '../browser/api'
 
 interface AddSiteFormProps {
   existingDomains: string[]
@@ -8,18 +9,63 @@ interface AddSiteFormProps {
   variant?: 'popup' | 'dashboard'
 }
 
+type SessionMode = 'duration' | 'count'
+
 export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSiteFormProps) {
   const [newSite, setNewSite] = useState('')
   const [newSiteLimit, setNewSiteLimit] = useState('30')
-  const [newSessionLimit, setNewSessionLimit] = useState('10')
+  const [newSessionInput, setNewSessionInput] = useState('10')
+  const [sessionMode, setSessionMode] = useState<SessionMode>('duration')
+
+  useEffect(() => {
+    async function prefillActiveTab() {
+      try {
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+        if (tab && tab.url) {
+          const domain = domainNormalizer.normalize(tab.url)
+          if (domain && !existingDomains.includes(domain)) {
+            setNewSite(domain)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to get active tab:', err)
+      }
+    }
+    prefillActiveTab()
+  }, [existingDomains])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const domain = domainNormalizer.normalize(newSite)
     if (!domain) return
     if (existingDomains.includes(domain)) return
-    await onAdd(domain, parseInt(newSiteLimit), parseInt(newSessionLimit))
+
+    const dailyLimit = parseInt(newSiteLimit)
+    let finalSessionLimit = parseInt(newSessionInput)
+
+    if (sessionMode === 'count') {
+      const numSessions = parseInt(newSessionInput)
+      if (numSessions > 0) {
+         finalSessionLimit = Math.max(1, Math.floor(dailyLimit / numSessions))
+      }
+    }
+
+    await onAdd(domain, dailyLimit, finalSessionLimit)
     setNewSite('')
+  }
+
+  const parsedDaily = parseInt(newSiteLimit) || 0;
+  const parsedSessionInput = parseInt(newSessionInput) || 0;
+  
+  let helperText = '';
+  if (parsedDaily > 0 && parsedSessionInput > 0) {
+    if (sessionMode === 'duration') {
+      const numSessions = Math.max(1, Math.floor(parsedDaily / parsedSessionInput));
+      helperText = `${numSessions} session${numSessions > 1 ? 's' : ''} of ${parsedSessionInput} mins`;
+    } else {
+      const minsPerSession = Math.max(1, Math.floor(parsedDaily / parsedSessionInput));
+      helperText = `${parsedSessionInput} session${parsedSessionInput > 1 ? 's' : ''} of ${minsPerSession} mins`;
+    }
   }
 
   if (variant === 'dashboard') {
@@ -49,24 +95,39 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
               value={newSiteLimit}
               onChange={e => setNewSiteLimit(e.target.value)}
               placeholder="Daily"
-              className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-6 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+              className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-14 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
             />
             <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
               DAILY
             </span>
           </div>
-          <div className="relative">
-            <Clock className="absolute left-5 top-1/2 -translate-y-1/2 w-7 h-7 text-indigo-500" />
-            <input
-              type="number"
-              value={newSessionLimit}
-              onChange={e => setNewSessionLimit(e.target.value)}
-              placeholder="Session"
-              className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-6 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-            />
-            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-400 uppercase tracking-widest pointer-events-none">
-              SESSION
-            </span>
+          <div className="relative group flex flex-col">
+            <div className="relative w-full">
+              {sessionMode === 'duration' ? (
+                 <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('count')} title="Switch to Number of Sessions">
+                   <Clock className="w-6 h-6" />
+                 </button>
+              ) : (
+                 <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('duration')} title="Switch to Session Duration">
+                   <ListOrdered className="w-6 h-6" />
+                 </button>
+              )}
+              <input
+                type="number"
+                value={newSessionInput}
+                onChange={e => setNewSessionInput(e.target.value)}
+                placeholder={sessionMode === 'duration' ? "Mins" : "Sessions"}
+                className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-16 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+              />
+               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-400 uppercase tracking-widest pointer-events-none">
+                {sessionMode === 'duration' ? 'MINS' : 'COUNT'}
+              </span>
+            </div>
+            {helperText && (
+              <span className="absolute -bottom-6 left-4 text-xs font-bold text-indigo-400/80 tracking-wide whitespace-nowrap">
+                {helperText}
+              </span>
+            )}
           </div>
           <button
             type="submit"
@@ -107,16 +168,31 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
           />
         </div>
-        <div className="relative">
-          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500" />
-          <input
-            type="number"
-            value={newSessionLimit}
-            onChange={e => setNewSessionLimit(e.target.value)}
-            placeholder="Session Limit"
-            title="Session Limit (mins)"
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-          />
+        <div className="relative flex flex-col">
+          <div className="relative w-full">
+            {sessionMode === 'duration' ? (
+               <button type="button" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 hover:bg-slate-800 text-indigo-500 rounded-lg transition-colors cursor-pointer" onClick={() => setSessionMode('count')} title="Switch to Number of Sessions">
+                 <Clock className="w-5 h-5" />
+               </button>
+            ) : (
+               <button type="button" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 hover:bg-slate-800 text-indigo-500 rounded-lg transition-colors cursor-pointer" onClick={() => setSessionMode('duration')} title="Switch to Session Duration">
+                 <ListOrdered className="w-5 h-5" />
+               </button>
+            )}
+            <input
+              type="number"
+              value={newSessionInput}
+              onChange={e => setNewSessionInput(e.target.value)}
+              placeholder={sessionMode === 'duration' ? "Session Mins" : "Sessions"}
+              title={sessionMode === 'duration' ? "Session Limit (mins)" : "Number of Sessions"}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            />
+          </div>
+          {helperText && (
+            <span className="absolute -bottom-5 left-2 text-[10px] font-medium text-indigo-400/80 whitespace-nowrap">
+              {helperText}
+            </span>
+          )}
         </div>
         <button
           type="submit"
