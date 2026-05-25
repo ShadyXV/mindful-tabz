@@ -101,7 +101,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
               DAILY
             </span>
           </div>
-          <div className="relative group flex flex-col">
+          <div className="relative group flex flex-col gap-2">
             <div className="relative w-full">
               {sessionMode === 'duration' ? (
                  <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('count')} title="Switch to Number of Sessions">
@@ -124,7 +124,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
               </span>
             </div>
             {helperText && (
-              <span className="absolute -bottom-6 left-4 text-xs font-bold text-indigo-400/80 tracking-wide whitespace-nowrap">
+              <span className="text-sm font-semibold text-slate-400 ml-4">
                 {helperText}
               </span>
             )}
@@ -168,7 +168,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
             className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
           />
         </div>
-        <div className="relative flex flex-col">
+        <div className="relative flex flex-col gap-1.5">
           <div className="relative w-full">
             {sessionMode === 'duration' ? (
                <button type="button" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 hover:bg-slate-800 text-indigo-500 rounded-lg transition-colors cursor-pointer" onClick={() => setSessionMode('count')} title="Switch to Number of Sessions">
@@ -189,7 +189,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
             />
           </div>
           {helperText && (
-            <span className="absolute -bottom-5 left-2 text-[10px] font-medium text-indigo-400/80 whitespace-nowrap">
+            <span className="text-xs font-semibold text-slate-400 ml-2">
               {helperText}
             </span>
           )}
