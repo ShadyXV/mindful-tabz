@@ -72,14 +72,23 @@ function executeEffects(effects: FocusEffect[]) {
 }
 
 async function blockDomain(domain: string, reason: string) {
-  const tabs = await browser.tabs.query({ url: [`*://*.${domain}/*`] })
-  for (const tab of tabs) {
-    if (tab.id) {
-      browser.tabs.update(tab.id, {
-        url: browser.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`),
-      })
-    }
-  }
+  const tabs = await browser.tabs.query({ url: [`*://${domain}/*`, `*://*.${domain}/*`] })
+  const redirected = await Promise.all(
+    tabs.map(async tab => {
+      if (!tab.id) return false
+      try {
+        await browser.tabs.update(tab.id, {
+          url: browser.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`),
+        })
+        return true
+      } catch (err) {
+        console.error('Failed to block tab:', err)
+        return false
+      }
+    })
+  )
+  const redirectedCount = redirected.filter(Boolean).length
+  await storageEngine.recordBlockEvent(domain, reason, redirectedCount)
 }
 
 function showNotification(message: string) {

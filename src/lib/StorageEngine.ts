@@ -5,6 +5,7 @@ import type {
   Group,
   AnalyticsSnapshot,
   HistoryRecord,
+  BlockEvent,
   StorageData,
   StorageChangeCallback,
 } from '../types'
@@ -15,6 +16,7 @@ export type {
   Group,
   AnalyticsSnapshot,
   HistoryRecord,
+  BlockEvent,
   StorageData,
   StorageChangeCallback,
 }
@@ -26,6 +28,20 @@ function getLocalDateString(): string {
   return localDate.toISOString().split('T')[0]
 }
 
+function getCutoffDateString(): string {
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - 30)
+  const cutoffOffset = cutoffDate.getTimezoneOffset()
+  const cutoffLocal = new Date(cutoffDate.getTime() - (cutoffOffset * 60 * 1000))
+  return cutoffLocal.toISOString().split('T')[0]
+}
+
+function pruneRollingData(data: StorageData): void {
+  const cutoffStr = getCutoffDateString()
+  data.history = data.history.filter(h => h.date >= cutoffStr)
+  data.blockEvents = data.blockEvents.filter(e => e.date >= cutoffStr)
+}
+
 class StorageEngine {
   private async getData(): Promise<StorageData> {
     const result = await browser.storage.local.get([
@@ -35,6 +51,7 @@ class StorageEngine {
       'analyticsSnapshots',
       'lastResetDate',
       'history',
+      'blockEvents',
     ])
     return {
       sites: (result.sites || []) as Site[],
@@ -43,6 +60,7 @@ class StorageEngine {
       analyticsSnapshots: (result.analyticsSnapshots || []) as AnalyticsSnapshot[],
       lastResetDate: (result.lastResetDate || '') as string,
       history: (result.history || []) as HistoryRecord[],
+      blockEvents: (result.blockEvents || []) as BlockEvent[],
     }
   }
 
@@ -83,13 +101,7 @@ class StorageEngine {
     }
     historyEntry.timeSpent += deltaMinutes
 
-    // Prune history to last 30 days
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - 30)
-    const cutoffOffset = cutoffDate.getTimezoneOffset()
-    const cutoffLocal = new Date(cutoffDate.getTime() - (cutoffOffset * 60 * 1000))
-    const cutoffStr = cutoffLocal.toISOString().split('T')[0]
-    data.history = data.history.filter(h => h.date >= cutoffStr)
+    pruneRollingData(data)
 
     const site = data.sites.find(s => s.domain === domain)
     if (site) {
@@ -123,6 +135,26 @@ class StorageEngine {
 
     await this.saveData(data)
     return { shouldBlock, reason }
+  }
+
+  async recordBlockEvent(domain: string, reason: string, count: number): Promise<void> {
+    if (count <= 0) return
+
+    const data = await this.getData()
+    const today = getLocalDateString()
+    const currentHour = new Date().getHours()
+    const event = data.blockEvents.find(
+      e => e.date === today && e.hour === currentHour && e.domain === domain && e.reason === reason
+    )
+
+    if (event) {
+      event.count += count
+    } else {
+      data.blockEvents.push({ date: today, hour: currentHour, domain, reason, count })
+    }
+
+    pruneRollingData(data)
+    await this.saveData({ history: data.history, blockEvents: data.blockEvents })
   }
 
   async resetIfNewDay(): Promise<boolean> {

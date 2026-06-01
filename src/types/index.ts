@@ -33,6 +33,14 @@ export interface HistoryRecord {
   timeSpent: number;  // in minutes
 }
 
+export interface BlockEvent {
+  date: string;       // "YYYY-MM-DD"
+  hour: number;       // 0 to 23
+  domain: string;
+  reason: string;
+  count: number;
+}
+
 export interface StorageData {
   sites: Site[];
   groups: Group[];
@@ -40,6 +48,7 @@ export interface StorageData {
   analyticsSnapshots: AnalyticsSnapshot[];
   lastResetDate: string;
   history: HistoryRecord[];
+  blockEvents: BlockEvent[];
 }
 
 export type StorageChangeCallback = (data: StorageData) => void;
