@@ -30,8 +30,8 @@ export function SettingsView({ snapshots }: SettingsViewProps) {
     }
   }
 
-  const purgeData = async () => {
-    if (confirm('DANGER: This action is irreversible. Are you sure you want to purge all application data?')) {
+  const deleteData = async () => {
+    if (confirm('Delete all saved sites, groups, and screen time history? This cannot be undone.')) {
       await browser.storage.local.clear()
       window.location.reload()
     }
@@ -43,31 +43,31 @@ export function SettingsView({ snapshots }: SettingsViewProps) {
         <div className="absolute top-0 right-0 p-12 opacity-5">
           <Settings className="w-64 h-64" />
         </div>
-        <h2 className="text-3xl font-black mb-4 text-white tracking-tight">Configuration</h2>
+        <h2 className="text-3xl font-black mb-4 text-white tracking-tight">Settings</h2>
         <p className="text-slate-500 font-bold text-lg mb-12 max-w-2xl">
-          Tailor Mindful Tabz to your specific productivity workflows and data management preferences.
+          Set how Mindful Tabz tracks sites and stores your data.
         </p>
 
         <div className="space-y-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-10 bg-slate-950 rounded-[2.5rem] border border-slate-800 group hover:border-red-500/20 transition-all">
             <div className="mb-6 md:mb-0">
-              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Data Integrity</h3>
+              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Reset Data</h3>
               <p className="text-slate-500 font-medium">
-                Permanently purge all site definitions, group clusters, and historical screen time metrics.
+                Permanently delete saved sites, groups, and screen time history.
               </p>
             </div>
             <button
-              onClick={purgeData}
+              onClick={deleteData}
               className="px-10 py-5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white font-black rounded-2xl transition-all border border-red-500/20 uppercase tracking-widest text-xs"
             >
-              Purge All Data
+              Delete All Data
             </button>
           </div>
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-10 bg-slate-950 rounded-[2.5rem] border border-slate-800">
             <div className="mb-6 md:mb-0">
-              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Support & Development</h3>
-              <p className="text-slate-500 font-medium">Mindful Tabz is an open-source tool built for digital well-being.</p>
+              <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Help</h3>
+              <p className="text-slate-500 font-medium">Mindful Tabz helps you track site time and block distractions.</p>
             </div>
             <div className="flex gap-4">
               <button className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-black rounded-2xl transition-all uppercase tracking-widest text-xs">
@@ -88,7 +88,7 @@ export function SettingsView({ snapshots }: SettingsViewProps) {
               <Activity className="text-indigo-400 w-8 h-8" />
               App Performance
             </h2>
-            <p className="text-slate-500 font-bold">Monitor resource consumption and extension health.</p>
+            <p className="text-slate-500 font-bold">Check storage use and extension performance.</p>
           </div>
           <button
             onClick={takeSnapshot}
@@ -194,7 +194,7 @@ export function SettingsView({ snapshots }: SettingsViewProps) {
 
       <footer className="text-center py-10 opacity-30">
         <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.5em]">
-          Mindful Tabz Active Protection Engine v1.0.0
+          Mindful Tabz v1.0.0
         </p>
       </footer>
     </div>

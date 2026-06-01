@@ -20,11 +20,11 @@ export function GroupCard({ group, allSites, onRemove, onToggleSite, variant = '
             <div className="flex items-center gap-8 mt-2">
               <span className="text-slate-500 text-sm font-black flex items-center gap-2 uppercase tracking-widest">
                 <Clock className="w-5 h-5" />
-                Quota: {group.limitMinutes}m
+                Limit: {group.limitMinutes}m
               </span>
               <span className="text-indigo-400 text-sm font-black flex items-center gap-2 uppercase tracking-widest">
                 <BarChart3 className="w-5 h-5" />
-                Consumed: {formatTime(group.timeSpentToday)}
+                Used: {formatTime(group.timeSpentToday)}
               </span>
             </div>
           </div>
@@ -37,7 +37,7 @@ export function GroupCard({ group, allSites, onRemove, onToggleSite, variant = '
         </div>
         <div className="p-10 bg-slate-950/30">
           <h4 className="text-[10px] font-black text-slate-600 mb-6 uppercase tracking-[0.3em] ml-2">
-            Assign Domains to cluster
+            Sites in this group
           </h4>
           <div className="flex flex-wrap gap-4">
             {allSites.length > 0 ? (

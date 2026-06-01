@@ -78,14 +78,14 @@ export function SiteCard({ site, onUpdate, onRemove, variant = 'popup' }: SiteCa
                 <h3 className="font-black text-4xl text-white mb-2 tracking-tighter truncate">{site.domain}</h3>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                  <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Active Protection</span>
+                  <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Limit enabled</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-[1fr_auto] gap-4 items-baseline">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Daily Progress</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Today</span>
                 <span className="text-indigo-400 font-black text-sm leading-none whitespace-nowrap text-right">
                     {formatTime(site.timeSpentToday)} / {site.limitMinutes}m
                   </span>
@@ -94,7 +94,7 @@ export function SiteCard({ site, onUpdate, onRemove, variant = 'popup' }: SiteCa
             </div>
             <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-[1fr_auto] gap-4 items-baseline">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Session Health</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Current visit</span>
                 <span className="text-emerald-400 font-black text-sm leading-none whitespace-nowrap text-right">
                     {formatTime(site.sessionTimeSpent)} / {site.sessionLimitMinutes}m
                   </span>

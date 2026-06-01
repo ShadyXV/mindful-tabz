@@ -28,14 +28,14 @@ export function GroupsView({ sites, groups }: GroupsViewProps) {
           <div className="bg-indigo-600/20 p-2 rounded-xl">
             <LayoutGrid className="w-6 h-6" />
           </div>
-          Create Resource Cluster
+          Create Group
         </h2>
         <form onSubmit={handleAddGroup} className="flex flex-col md:flex-row gap-8">
           <input
             type="text"
             value={newGroupName}
             onChange={e => setNewGroupName(e.target.value)}
-            placeholder="Group Label (e.g. Social Media)"
+            placeholder="Group name, e.g. Social Media"
             className="flex-1 bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 px-8 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-700"
           />
           <div className="w-full md:w-56 relative">
@@ -52,7 +52,7 @@ export function GroupsView({ sites, groups }: GroupsViewProps) {
             type="submit"
             className="bg-indigo-600 hover:bg-indigo-500 text-white px-12 py-5 rounded-3xl font-black text-xl transition-all shadow-2xl shadow-indigo-900/40"
           >
-            CREATE
+            Create Group
           </button>
         </form>
       </section>

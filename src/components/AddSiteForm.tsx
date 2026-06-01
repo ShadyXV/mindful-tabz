@@ -75,7 +75,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
           <div className="bg-indigo-600/20 w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
             <Plus className="w-6 h-6" />
           </div>
-          Protect New Domain
+          Add Site Limit
         </h2>
         <form
           onSubmit={handleSubmit}
@@ -136,7 +136,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
             type="submit"
             className="h-20 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl font-black text-xl transition-all shadow-2xl shadow-indigo-900/40 transform hover:-translate-y-1 active:translate-y-0"
           >
-            ACTIVATE
+            Add Site
           </button>
         </form>
       </section>
