@@ -58,6 +58,25 @@ async function runTick() {
   executeEffects(effects)
 }
 
+async function enforceActiveBlock() {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true })
+    if (!tab) return
+
+    const domain = domainNormalizer.normalize(tab.url)
+    focusTracker.setActiveDomain(domain)
+    await updateBadge(domain)
+
+    if (!domain) return
+    const reason = await storageEngine.getBlockReasonForDomain(domain)
+    if (reason) {
+      await blockDomain(domain, reason)
+    }
+  } catch (err) {
+    console.error('Failed to enforce active block:', err)
+  }
+}
+
 function executeEffects(effects: FocusEffect[]) {
   for (const effect of effects) {
     switch (effect.type) {
@@ -107,6 +126,7 @@ browser.tabs.onActivated.addListener(async activeInfo => {
     const domain = domainNormalizer.normalize(tab.url)
     focusTracker.setActiveDomain(domain)
     await updateBadge(domain)
+    await enforceActiveBlock()
   } catch (err) {
     console.error(err)
   }
@@ -117,6 +137,7 @@ browser.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
     const domain = domainNormalizer.normalize(tab.url)
     focusTracker.setActiveDomain(domain)
     await updateBadge(domain)
+    await enforceActiveBlock()
   }
 })
 
@@ -131,6 +152,7 @@ browser.windows.onFocusChanged.addListener(async windowId => {
         const domain = domainNormalizer.normalize(tab.url)
         focusTracker.setActiveDomain(domain)
         await updateBadge(domain)
+        await enforceActiveBlock()
       } else {
         await updateBadge(null)
       }
@@ -149,6 +171,17 @@ browser.alarms.onAlarm.addListener(alarm => {
 
 browser.runtime.onInstalled.addListener(() => {
   runTick()
+})
+
+browser.runtime.onMessage.addListener((message: unknown) => {
+  if (
+    typeof message === 'object' &&
+    message !== null &&
+    'type' in message &&
+    message.type === 'CHECK_ACTIVE_BLOCK'
+  ) {
+    enforceActiveBlock()
+  }
 })
 
 syncActiveTab()

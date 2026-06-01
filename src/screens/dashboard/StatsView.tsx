@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { BarChart3, Calendar, Clock3, List, PieChart, ShieldCheck } from 'lucide-react'
+import { BarChart3, Calendar, Clock3, List, PieChart, ShieldCheck, Target } from 'lucide-react'
 import { formatTime } from '../../utils/time'
-import type { BlockEvent, HistoryRecord, ScreenTimeEntry, Site } from '../../types'
+import type { BlockingPauseEvent, BlockEvent, HistoryRecord, ScreenTimeEntry, Site } from '../../types'
 import {
   DailyBars,
   DailyList,
@@ -16,10 +16,12 @@ interface StatsViewProps {
   screenTime: ScreenTimeEntry[]
   history: HistoryRecord[]
   blockEvents: BlockEvent[]
+  blockingPauseEvents: BlockingPauseEvent[]
+  blockingEnabled: boolean
   onQuickAdd: (domain: string) => Promise<void>
 }
 
-type SubTab = 'today' | 'distribution' | 'hourly' | 'weekly'
+type SubTab = 'today' | 'distribution' | 'hourly' | 'weekly' | 'limits'
 type DistributionRange = 'today' | 'seven'
 
 const SUB_TABS = [
@@ -27,6 +29,7 @@ const SUB_TABS = [
   { id: 'distribution', label: 'Distribution', icon: PieChart },
   { id: 'hourly', label: '24 hours', icon: Clock3 },
   { id: 'weekly', label: '7 days', icon: Calendar },
+  { id: 'limits', label: 'Limits', icon: Target },
 ] as const
 
 function getLocalDateString(d: Date = new Date()): string {
@@ -88,7 +91,124 @@ function buildSevenDayData(
   )
 }
 
-export function StatsView({ sites, screenTime, history, blockEvents, onQuickAdd }: StatsViewProps) {
+function countEvents(events: BlockingPauseEvent[], predicate: (event: BlockingPauseEvent) => boolean): number {
+  return events.filter(predicate).reduce((sum, event) => sum + event.count, 0)
+}
+
+function LimitsReport({
+  sites,
+  blockEvents,
+  blockingPauseEvents,
+  blockingEnabled,
+}: {
+  sites: Site[]
+  blockEvents: BlockEvent[]
+  blockingPauseEvents: BlockingPauseEvent[]
+  blockingEnabled: boolean
+}) {
+  const today = getLocalDateString()
+  const last7Days = new Set(getLast7Days())
+  const globalPausesToday = countEvents(
+    blockingPauseEvents,
+    event => event.date === today && event.scope === 'global' && event.action === 'paused'
+  )
+  const sitePausesToday = countEvents(
+    blockingPauseEvents,
+    event => event.date === today && event.scope === 'site' && event.action === 'paused'
+  )
+  const totalPauseActions7d = countEvents(
+    blockingPauseEvents,
+    event => last7Days.has(event.date) && event.action === 'paused'
+  )
+
+  return (
+    <section className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Global blocking</p>
+          <p className={`text-3xl font-black ${blockingEnabled ? 'text-indigo-400' : 'text-amber-400'}`}>
+            {blockingEnabled ? 'On' : 'Paused'}
+          </p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Pauses today</p>
+          <p className="text-3xl font-black text-white">{globalPausesToday + sitePausesToday}</p>
+          <p className="text-slate-500 text-xs font-bold mt-2">{globalPausesToday} global, {sitePausesToday} site</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">7-day pauses</p>
+          <p className="text-3xl font-black text-white">{totalPauseActions7d}</p>
+        </div>
+      </div>
+
+      <div className="bg-slate-900/40 border border-slate-800/50 rounded-[2.5rem] p-6 space-y-4">
+        <div>
+          <h3 className="text-xl font-black text-white tracking-tight">Limit results today</h3>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mt-1">
+            Daily target compared with actual tracked time
+          </p>
+        </div>
+
+        {sites.length > 0 ? (
+          <div className="space-y-3">
+            {sites.map(site => {
+              const overBy = site.limitMinutes > 0 ? site.timeSpentToday - site.limitMinutes : 0
+              const percent = site.limitMinutes > 0 ? Math.min(100, (site.timeSpentToday / site.limitMinutes) * 100) : 0
+              const blocksToday = blockEvents
+                .filter(event => event.date === today && event.domain === site.domain)
+                .reduce((sum, event) => sum + event.count, 0)
+              const pauseCount = countEvents(
+                blockingPauseEvents,
+                event => event.date === today && event.scope === 'site' && event.domain === site.domain && event.action === 'paused'
+              )
+
+              return (
+                <div key={site.domain} className="bg-slate-950/50 border border-slate-800/60 rounded-2xl p-5">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div className="min-w-0">
+                      <h4 className="font-black text-white text-lg truncate">{site.domain}</h4>
+                      <p className="text-xs font-bold text-slate-500 mt-1">
+                        Blocking {site.blockingEnabled ? 'on' : 'paused'}, {blocksToday} blocks today, {pauseCount} pauses today
+                      </p>
+                    </div>
+                    <div className="text-left md:text-right shrink-0">
+                      <p className="text-sm font-mono font-black text-white">
+                        {formatTime(site.timeSpentToday)} / {site.limitMinutes}m
+                      </p>
+                      <p className={`text-xs font-bold ${overBy > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {overBy > 0 ? `${formatTime(overBy)} over` : `${formatTime(Math.max(0, -overBy))} left`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${overBy > 0 ? 'bg-red-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${Math.max(2, percent)}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-16 border border-dashed border-slate-800 rounded-[2rem]">
+            <p className="text-slate-600 font-bold uppercase tracking-[0.2em] text-xs">No site limits yet</p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+export function StatsView({
+  sites,
+  screenTime,
+  history,
+  blockEvents,
+  blockingPauseEvents,
+  blockingEnabled,
+  onQuickAdd,
+}: StatsViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('today')
   const [includeUntracked, setIncludeUntracked] = useState(false)
   const [distributionRange, setDistributionRange] = useState<DistributionRange>('today')
@@ -228,6 +348,15 @@ export function StatsView({ sites, screenTime, history, blockEvents, onQuickAdd 
             blockEvents={blockEvents}
             trackedDomains={trackedDomains}
             includeUntracked={includeUntracked}
+          />
+        )}
+
+        {activeSubTab === 'limits' && (
+          <LimitsReport
+            sites={sites}
+            blockEvents={blockEvents}
+            blockingPauseEvents={blockingPauseEvents}
+            blockingEnabled={blockingEnabled}
           />
         )}
       </div>

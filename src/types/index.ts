@@ -4,6 +4,7 @@ export interface Site {
   sessionLimitMinutes: number;
   timeSpentToday: number;
   sessionTimeSpent: number;
+  blockingEnabled: boolean;
 }
 
 export interface ScreenTimeEntry {
@@ -41,6 +42,15 @@ export interface BlockEvent {
   count: number;
 }
 
+export interface BlockingPauseEvent {
+  date: string;       // "YYYY-MM-DD"
+  hour: number;       // 0 to 23
+  scope: 'global' | 'site';
+  domain: string | null;
+  action: 'paused' | 'resumed';
+  count: number;
+}
+
 export interface StorageData {
   sites: Site[];
   groups: Group[];
@@ -49,6 +59,8 @@ export interface StorageData {
   lastResetDate: string;
   history: HistoryRecord[];
   blockEvents: BlockEvent[];
+  blockingPauseEvents: BlockingPauseEvent[];
+  blockingEnabled: boolean;
 }
 
 export type StorageChangeCallback = (data: StorageData) => void;

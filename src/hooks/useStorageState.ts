@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react'
 import { storageEngine } from '../lib/StorageEngine'
-import type { Site, Group, ScreenTimeEntry, AnalyticsSnapshot, HistoryRecord, BlockEvent } from '../types'
+import type {
+  Site,
+  Group,
+  ScreenTimeEntry,
+  AnalyticsSnapshot,
+  HistoryRecord,
+  BlockEvent,
+  BlockingPauseEvent,
+} from '../types'
 
 export interface StorageState {
   sites: Site[]
@@ -9,6 +17,8 @@ export interface StorageState {
   snapshots: AnalyticsSnapshot[]
   history: HistoryRecord[]
   blockEvents: BlockEvent[]
+  blockingPauseEvents: BlockingPauseEvent[]
+  blockingEnabled: boolean
   isLoaded: boolean
 }
 
@@ -20,6 +30,8 @@ export function useStorageState(): StorageState {
     snapshots: [],
     history: [],
     blockEvents: [],
+    blockingPauseEvents: [],
+    blockingEnabled: true,
     isLoaded: false,
   })
 
@@ -32,6 +44,8 @@ export function useStorageState(): StorageState {
         snapshots: data.analyticsSnapshots,
         history: data.history || [],
         blockEvents: data.blockEvents || [],
+        blockingPauseEvents: data.blockingPauseEvents || [],
+        blockingEnabled: data.blockingEnabled,
         isLoaded: true,
       })
     })
@@ -45,6 +59,8 @@ export function useStorageState(): StorageState {
         snapshots: data.analyticsSnapshots,
         history: data.history || [],
         blockEvents: data.blockEvents || [],
+        blockingPauseEvents: data.blockingPauseEvents || [],
+        blockingEnabled: data.blockingEnabled,
       }))
     })
 

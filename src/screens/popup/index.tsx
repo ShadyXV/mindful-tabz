@@ -12,13 +12,13 @@ type PopupTab = 'screentime' | 'sites' | 'groups'
 
 const TABS = [
   { id: 'screentime', label: 'Screen Time', icon: BarChart3 },
-  { id: 'sites', label: 'Manage Sites', icon: Globe },
+  { id: 'sites', label: 'Blocked Sites', icon: Globe },
   { id: 'groups', label: 'Groups', icon: LayoutGrid },
 ] as const
 
 export function PopupRoot() {
-  const { sites, groups, screenTime } = useStorageState()
-  const [activeTab, setActiveTab] = useState<PopupTab>('sites')
+  const { sites, groups, screenTime, blockingEnabled } = useStorageState()
+  const [activeTab, setActiveTab] = useState<PopupTab>('screentime')
 
   const openDashboard = () => {
     if (browser.runtime.openOptionsPage) {
@@ -66,7 +66,7 @@ export function PopupRoot() {
         {activeTab === 'screentime' && (
           <ScreenTimeView sites={sites} screenTime={screenTime} onQuickAdd={quickAdd} />
         )}
-        {activeTab === 'sites' && <SitesView sites={sites} />}
+        {activeTab === 'sites' && <SitesView sites={sites} blockingEnabled={blockingEnabled} />}
         {activeTab === 'groups' && <GroupsView sites={sites} groups={groups} />}
       </div>
     </div>
