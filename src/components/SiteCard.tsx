@@ -69,51 +69,49 @@ export function SiteCard({ site, onUpdate, onRemove, variant = 'popup' }: SiteCa
             </div>
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-            <div className="flex items-center gap-8">
-              <div className="bg-slate-800 p-6 rounded-[2rem] shadow-inner">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(18rem,1.25fr)_minmax(13rem,0.85fr)_minmax(13rem,0.85fr)_auto] lg:items-center">
+            <div className="flex items-center gap-8 min-w-0">
+              <div className="bg-slate-800 w-24 h-24 rounded-[2rem] shadow-inner flex items-center justify-center shrink-0">
                 <Globe className="w-10 h-10 text-indigo-400" />
               </div>
-              <div>
-                <h3 className="font-black text-4xl text-white mb-2 tracking-tighter">{site.domain}</h3>
+              <div className="min-w-0">
+                <h3 className="font-black text-4xl text-white mb-2 tracking-tighter truncate">{site.domain}</h3>
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                  <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Active Protection</span>
+                  <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Active Protection</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-1 max-w-2xl gap-12">
-              <div className="flex-1 space-y-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Daily Progress</span>
-                  <span className="text-indigo-400 font-black text-sm">
+            <div className="space-y-4 min-w-0">
+              <div className="grid grid-cols-[1fr_auto] gap-4 items-baseline">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Daily Progress</span>
+                <span className="text-indigo-400 font-black text-sm leading-none whitespace-nowrap text-right">
                     {formatTime(site.timeSpentToday)} / {site.limitMinutes}m
                   </span>
-                </div>
-                <ProgressBar value={site.timeSpentToday} max={site.limitMinutes} color="indigo" size="lg" />
               </div>
-              <div className="flex-1 space-y-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Session Health</span>
-                  <span className="text-emerald-400 font-black text-sm">
+              <ProgressBar value={site.timeSpentToday} max={site.limitMinutes} color="indigo" size="lg" />
+            </div>
+            <div className="space-y-4 min-w-0">
+              <div className="grid grid-cols-[1fr_auto] gap-4 items-baseline">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Session Health</span>
+                <span className="text-emerald-400 font-black text-sm leading-none whitespace-nowrap text-right">
                     {formatTime(site.sessionTimeSpent)} / {site.sessionLimitMinutes}m
                   </span>
-                </div>
-                <ProgressBar value={site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="lg" />
               </div>
+              <ProgressBar value={site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="lg" />
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 lg:justify-self-end">
               <button
                 onClick={startEdit}
-                className="p-5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-2xl transition-all group-hover:shadow-md"
+                className="w-12 h-12 flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-800 rounded-2xl transition-all group-hover:shadow-md"
               >
                 <Edit2 className="w-6 h-6" />
               </button>
               <button
                 onClick={() => onRemove(site.domain)}
-                className="p-5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"
+                className="w-12 h-12 flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"
               >
                 <Trash2 className="w-6 h-6" />
               </button>

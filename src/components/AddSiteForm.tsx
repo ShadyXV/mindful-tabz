@@ -70,22 +70,25 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
 
   if (variant === 'dashboard') {
     return (
-      <section className="bg-slate-900 p-10 rounded-[3rem] border border-slate-800 shadow-2xl">
+      <section className="bg-slate-900 p-8 sm:p-10 rounded-[3rem] border border-slate-800 shadow-2xl">
         <h2 className="text-2xl font-black mb-8 flex items-center gap-4 text-indigo-400 uppercase tracking-tight">
-          <div className="bg-indigo-600/20 p-2 rounded-xl">
+          <div className="bg-indigo-600/20 w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
             <Plus className="w-6 h-6" />
           </div>
           Protect New Domain
         </h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-8">
-          <div className="relative md:col-span-2 lg:col-span-2">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(18rem,2fr)_minmax(10rem,0.85fr)_minmax(12rem,1fr)_minmax(10rem,0.9fr)] lg:items-start"
+        >
+          <div className="relative">
             <Globe className="absolute left-5 top-1/2 -translate-y-1/2 w-7 h-7 text-slate-500" />
             <input
               type="text"
               value={newSite}
               onChange={e => setNewSite(e.target.value)}
               placeholder="e.g. twitter.com"
-              className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-6 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-700"
+              className="w-full h-20 bg-slate-950 border-2 border-slate-800 rounded-3xl pl-16 pr-6 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-700"
             />
           </div>
           <div className="relative">
@@ -95,7 +98,7 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
               value={newSiteLimit}
               onChange={e => setNewSiteLimit(e.target.value)}
               placeholder="Daily"
-              className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-14 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+              className="w-full h-20 bg-slate-950 border-2 border-slate-800 rounded-3xl pl-16 pr-16 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
             />
             <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
               DAILY
@@ -104,11 +107,11 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
           <div className="relative group flex flex-col gap-2">
             <div className="relative w-full">
               {sessionMode === 'duration' ? (
-                 <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('count')} title="Switch to Number of Sessions">
+                 <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 flex items-center justify-center bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('count')} title="Switch to Number of Sessions">
                    <Clock className="w-6 h-6" />
                  </button>
               ) : (
-                 <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('duration')} title="Switch to Session Duration">
+                 <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 flex items-center justify-center bg-slate-900 hover:bg-indigo-600/20 text-indigo-500 rounded-xl transition-all border border-slate-800 hover:border-indigo-500/50 cursor-pointer shadow-sm" onClick={() => setSessionMode('duration')} title="Switch to Session Duration">
                    <ListOrdered className="w-6 h-6" />
                  </button>
               )}
@@ -117,21 +120,21 @@ export function AddSiteForm({ existingDomains, onAdd, variant = 'popup' }: AddSi
                 value={newSessionInput}
                 onChange={e => setNewSessionInput(e.target.value)}
                 placeholder={sessionMode === 'duration' ? "Mins" : "Sessions"}
-                className="w-full bg-slate-950 border-2 border-slate-800 rounded-3xl py-5 pl-16 pr-16 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                className="w-full h-20 bg-slate-950 border-2 border-slate-800 rounded-3xl pl-20 pr-16 text-xl font-bold focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 transition-all"
               />
                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-400 uppercase tracking-widest pointer-events-none">
                 {sessionMode === 'duration' ? 'MINS' : 'COUNT'}
               </span>
             </div>
             {helperText && (
-              <span className="text-sm font-semibold text-slate-400 ml-4">
+              <span className="text-sm font-semibold text-slate-400 ml-4 leading-none">
                 {helperText}
               </span>
             )}
           </div>
           <button
             type="submit"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-3xl font-black text-xl transition-all shadow-2xl shadow-indigo-900/40 transform hover:-translate-y-1 active:translate-y-0"
+            className="h-20 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl font-black text-xl transition-all shadow-2xl shadow-indigo-900/40 transform hover:-translate-y-1 active:translate-y-0"
           >
             ACTIVATE
           </button>
