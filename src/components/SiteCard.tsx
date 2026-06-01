@@ -162,7 +162,7 @@ export function SiteCard({ site, onUpdate, onRemove, onToggleBlocking, variant =
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-5">
             <div className="flex items-center gap-4 min-w-0">
               <div className="bg-slate-800 p-3 rounded-xl shrink-0">
                 <Globe className="w-8 h-8 text-indigo-400" />
@@ -174,7 +174,7 @@ export function SiteCard({ site, onUpdate, onRemove, onToggleBlocking, variant =
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 justify-self-end">
               {onToggleBlocking && (
                 <label className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer select-none">
                   <span className={`text-[10px] font-black uppercase tracking-wider ${site.blockingEnabled ? 'text-indigo-400' : 'text-slate-500'}`}>

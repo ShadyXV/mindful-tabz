@@ -36,19 +36,19 @@ export function TabNav({ tabs, activeTab, onChange, variant = 'popup' }: TabNavP
   }
 
   return (
-    <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+    <div className="flex w-full bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-hidden">
       {tabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
+          className={`flex-1 min-w-0 px-2 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 text-xs font-bold ${
             activeTab === tab.id
               ? 'bg-slate-800 text-white shadow-lg'
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <tab.icon className="w-4 h-4" />
-          {tab.label}
+          <tab.icon className="w-[18px] h-[18px] shrink-0" />
+          <span className="truncate">{tab.label}</span>
         </button>
       ))}
     </div>

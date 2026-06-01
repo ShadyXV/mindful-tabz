@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+body.popup-page,
+body.popup-page #root {
+  width: 620px;
+  min-width: 620px;
+  overflow-x: hidden;
+}
+
+body.popup-page {
+  scrollbar-color: rgb(51 65 85) rgb(2 6 23);
+}
+
+body.popup-page::-webkit-scrollbar {
+  width: 10px;
+}
+
+body.popup-page::-webkit-scrollbar-track {
+  background: rgb(2 6 23);
+}
+
+body.popup-page::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);
+  border: 2px solid rgb(2 6 23);
+  border-radius: 999px;
+}
