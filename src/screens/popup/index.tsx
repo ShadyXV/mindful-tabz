@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Shield, BarChart3, Globe, LayoutGrid } from 'lucide-react'
 import { useStorageState } from '../../hooks/useStorageState'
 import { storageEngine } from '../../lib/StorageEngine'
+import { domainNormalizer } from '../../lib/DomainNormalizer'
+import browser from '../../browser/api'
 import { TabNav } from '../../components/TabNav'
 import { ScreenTimeView } from './ScreenTimeView'
 import { SitesView } from './SitesView'
@@ -18,6 +20,21 @@ const TABS = [
 export function PopupRoot() {
   const { sites, groups, screenTime, blockingEnabled } = useStorageState()
   const [activeTab, setActiveTab] = useState<PopupTab>('screentime')
+  const [activeDomain, setActiveDomain] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadActiveDomain() {
+      try {
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+        setActiveDomain(domainNormalizer.normalize(tab?.url))
+      } catch (err) {
+        console.error('Failed to get active tab:', err)
+        setActiveDomain(null)
+      }
+    }
+
+    loadActiveDomain()
+  }, [])
 
   const quickAdd = async (domain: string) => {
     await storageEngine.addSite(domain, 30, 10)
@@ -45,7 +62,12 @@ export function PopupRoot() {
         </header>
 
         {activeTab === 'screentime' && (
-          <ScreenTimeView sites={sites} screenTime={screenTime} onQuickAdd={quickAdd} />
+          <ScreenTimeView
+            sites={sites}
+            screenTime={screenTime}
+            activeDomain={activeDomain}
+            onQuickAdd={quickAdd}
+          />
         )}
         {activeTab === 'sites' && <SitesView sites={sites} blockingEnabled={blockingEnabled} />}
         {activeTab === 'groups' && <GroupsView sites={sites} groups={groups} />}

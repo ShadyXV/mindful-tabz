@@ -1,10 +1,14 @@
 import { ArrowRight, CheckCircle2, Clock3, Globe, Plus } from 'lucide-react'
+import browser from '../../browser/api'
+import { ProgressBar } from '../../components/ProgressBar'
+import { useSites } from '../../hooks/useSites'
 import { formatTime } from '../../utils/time'
 import type { Site, ScreenTimeEntry } from '../../types'
 
 interface ScreenTimeViewProps {
   sites: Site[]
   screenTime: ScreenTimeEntry[]
+  activeDomain: string | null
   onQuickAdd: (domain: string) => Promise<void>
 }
 
@@ -129,12 +133,87 @@ function TrackedPie({ data }: { data: DomainTime[] }) {
   )
 }
 
-export function ScreenTimeView({ sites, screenTime, onQuickAdd }: ScreenTimeViewProps) {
+async function checkActiveBlock() {
+  try {
+    await browser.runtime.sendMessage({ type: 'CHECK_ACTIVE_BLOCK' })
+  } catch {
+    // Background may be asleep in development; the next tick will still enforce.
+  }
+}
+
+function CurrentSiteLimitCard({
+  site,
+  onToggleBlocking,
+}: {
+  site: Site
+  onToggleBlocking: (domain: string, enabled: boolean) => Promise<void>
+}) {
+  return (
+    <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-5">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="bg-slate-800 p-3 rounded-xl shrink-0">
+            <Globe className="w-7 h-7 text-indigo-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Current site</p>
+            <h3 className="font-bold text-2xl text-white truncate">{site.domain}</h3>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer select-none">
+          <span className={`text-[10px] font-black uppercase tracking-wider ${site.blockingEnabled ? 'text-indigo-400' : 'text-slate-500'}`}>
+            {site.blockingEnabled ? 'Block' : 'Paused'}
+          </span>
+          <input
+            type="checkbox"
+            checked={site.blockingEnabled}
+            onChange={event => onToggleBlocking(site.domain, event.target.checked)}
+            className="sr-only"
+          />
+          <span className={`w-9 h-5 rounded-full p-0.5 transition-colors ${site.blockingEnabled ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+            <span className={`block w-4 h-4 bg-white rounded-full transition-transform ${site.blockingEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+          </span>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs gap-3">
+            <span className="text-slate-400 font-medium">Daily Limit</span>
+            <span className="text-indigo-400 font-bold whitespace-nowrap">
+              {formatTime(site.timeSpentToday)} / {site.limitMinutes}m
+            </span>
+          </div>
+          <ProgressBar value={site.timeSpentToday} max={site.limitMinutes} color="indigo" size="sm" />
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs gap-3">
+            <span className="text-slate-400 font-medium">Session</span>
+            <span className="text-emerald-400 font-bold whitespace-nowrap">
+              {formatTime(site.sessionTimeSpent)} / {site.sessionLimitMinutes}m
+            </span>
+          </div>
+          <ProgressBar value={site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="sm" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function ScreenTimeView({ sites, screenTime, activeDomain, onQuickAdd }: ScreenTimeViewProps) {
+  const { setSiteBlockingEnabled } = useSites()
   const domainTimes = buildDomainTimes(screenTime, sites)
   const trackedTimes = domainTimes.filter(entry => entry.isTracked)
   const totalTime = domainTimes.reduce((sum, entry) => sum + entry.time, 0)
   const trackedTime = trackedTimes.reduce((sum, entry) => sum + entry.time, 0)
   const untrackedTime = totalTime - trackedTime
+  const currentSite = activeDomain ? sites.find(site => site.domain === activeDomain) : null
+
+  const toggleCurrentSiteBlocking = async (domain: string, enabled: boolean) => {
+    await setSiteBlockingEnabled(domain, enabled)
+    if (enabled) await checkActiveBlock()
+  }
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -160,6 +239,10 @@ export function ScreenTimeView({ sites, screenTime, onQuickAdd }: ScreenTimeView
           </div>
         </div>
       </section>
+
+      {currentSite && (
+        <CurrentSiteLimitCard site={currentSite} onToggleBlocking={toggleCurrentSiteBlocking} />
+      )}
 
       <TrackedPie data={trackedTimes} />
 
