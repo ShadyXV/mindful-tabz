@@ -4,6 +4,7 @@ import type { FocusEffect } from './lib/FocusTracker'
 import { domainNormalizer } from './lib/DomainNormalizer'
 import { storageEngine } from './lib/StorageEngine'
 import { getBadgeRemainingMinutes } from './lib/badgePolicy'
+import { getMatchingSite } from './lib/domainPolicy'
 
 function formatTime(minutes: number): string {
   if (minutes < 1) return '<1m'
@@ -20,7 +21,7 @@ async function updateBadge(activeDomain: string | null) {
   }
 
   const state = await storageEngine.getFullState()
-  const site = state.sites.find(s => s.domain === activeDomain)
+  const site = getMatchingSite(state.sites, activeDomain)
 
   if (site) {
     const remainingTime = getBadgeRemainingMinutes(site)
@@ -39,41 +40,47 @@ async function updateBadge(activeDomain: string | null) {
   }
 }
 
-async function syncActiveTab() {
+interface ActiveTabContext {
+  tabId: number | null
+  domain: string | null
+}
+
+async function syncActiveTab(): Promise<ActiveTabContext> {
   try {
     const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true })
     if (tab) {
       const domain = domainNormalizer.normalize(tab.url)
       focusTracker.setActiveDomain(domain)
       await updateBadge(domain)
+      return { tabId: tab.id ?? null, domain }
     } else {
       await updateBadge(null)
+      return { tabId: null, domain: null }
     }
   } catch (err) {
     console.error('Failed to sync active tab:', err)
+    return { tabId: null, domain: null }
   }
 }
 
 async function runTick() {
   await syncActiveTab()
   const effects = await focusTracker.handleTick()
-  await syncActiveTab()
+  const activeTab = await syncActiveTab()
+  await enforceActiveBlock(activeTab)
   await executeEffects(effects)
 }
 
-async function enforceActiveBlock() {
+async function enforceActiveBlock(activeTab?: ActiveTabContext) {
   try {
-    const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true })
-    if (!tab) return
-
-    const domain = domainNormalizer.normalize(tab.url)
-    focusTracker.setActiveDomain(domain)
-    await updateBadge(domain)
+    const context = activeTab ?? await syncActiveTab()
+    const { domain, tabId } = context
 
     if (!domain) return
     const reason = await storageEngine.getBlockReasonForDomain(domain)
-    if (reason) {
-      await blockDomain(domain, reason)
+    if (reason && tabId) {
+      const didRedirect = await blockTab(tabId, domain, reason)
+      await storageEngine.recordBlockEvent(domain, reason, didRedirect ? 1 : 0)
     }
   } catch (err) {
     console.error('Failed to enforce active block:', err)
@@ -98,19 +105,23 @@ async function blockDomain(domain: string, reason: string) {
   const redirected = await Promise.all(
     tabs.map(async tab => {
       if (!tab.id) return false
-      try {
-        await browser.tabs.update(tab.id, {
-          url: browser.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`),
-        })
-        return true
-      } catch (err) {
-        console.error('Failed to block tab:', err)
-        return false
-      }
+      return blockTab(tab.id, domain, reason)
     })
   )
   const redirectedCount = redirected.filter(Boolean).length
   await storageEngine.recordBlockEvent(domain, reason, redirectedCount)
+}
+
+async function blockTab(tabId: number, domain: string, reason: string): Promise<boolean> {
+  try {
+    await browser.tabs.update(tabId, {
+      url: browser.runtime.getURL(`blocked.html?site=${domain}&reason=${reason}`),
+    })
+    return true
+  } catch (err) {
+    console.error('Failed to block tab:', err)
+    return false
+  }
 }
 
 async function showNotification(message: string) {
@@ -129,18 +140,18 @@ browser.tabs.onActivated.addListener(async activeInfo => {
     const domain = domainNormalizer.normalize(tab.url)
     focusTracker.setActiveDomain(domain)
     await updateBadge(domain)
-    await enforceActiveBlock()
+    await enforceActiveBlock({ tabId: tab.id ?? null, domain })
   } catch (err) {
     console.error(err)
   }
 })
 
-browser.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) {
     const domain = domainNormalizer.normalize(tab.url)
     focusTracker.setActiveDomain(domain)
     await updateBadge(domain)
-    await enforceActiveBlock()
+    await enforceActiveBlock({ tabId, domain })
   }
 })
 
@@ -155,7 +166,7 @@ browser.windows.onFocusChanged.addListener(async windowId => {
         const domain = domainNormalizer.normalize(tab.url)
         focusTracker.setActiveDomain(domain)
         await updateBadge(domain)
-        await enforceActiveBlock()
+        await enforceActiveBlock({ tabId: tab.id ?? null, domain })
       } else {
         await updateBadge(null)
       }
@@ -172,8 +183,12 @@ browser.alarms.onAlarm.addListener(async alarm => {
   }
 })
 
-browser.runtime.onInstalled.addListener(() => {
-  runTick()
+browser.runtime.onInstalled.addListener(async () => {
+  await runTick()
+})
+
+browser.runtime.onStartup.addListener(async () => {
+  await runTick()
 })
 
 browser.runtime.onMessage.addListener((message: unknown) => {
@@ -183,8 +198,10 @@ browser.runtime.onMessage.addListener((message: unknown) => {
     'type' in message &&
     message.type === 'CHECK_ACTIVE_BLOCK'
   ) {
-    enforceActiveBlock()
+    return enforceActiveBlock()
   }
+
+  return undefined
 })
 
 syncActiveTab()

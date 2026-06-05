@@ -17,6 +17,8 @@ import {
   startSessionCooldownIfNeeded,
 } from './sessionPolicy'
 import { canEnforceSiteBlocking } from './blockingPolicy'
+import { isDailyLimitReached } from './limitPolicy'
+import { getMatchingSite } from './domainPolicy'
 
 export type {
   Site,
@@ -105,7 +107,8 @@ class StorageEngine {
   ): Promise<{ shouldBlock: boolean; reason: string | null }> {
     const data = await this.getData()
     const nowMs = Date.now()
-    const site = data.sites.find(s => s.domain === domain)
+    const site = getMatchingSite(data.sites, domain)
+    const trackedDomain = site?.domain ?? domain
 
     if (site) {
       refreshExpiredSessionCooldown(site, nowMs)
@@ -116,9 +119,9 @@ class StorageEngine {
     }
 
     // Update daily screenTime
-    let screenEntry = data.screenTime.find(e => e.domain === domain)
+    let screenEntry = data.screenTime.find(e => e.domain === trackedDomain)
     if (!screenEntry) {
-      screenEntry = { domain, timeSpentToday: 0 }
+      screenEntry = { domain: trackedDomain, timeSpentToday: 0 }
       data.screenTime.push(screenEntry)
     }
     screenEntry.timeSpentToday += deltaMinutes
@@ -126,9 +129,11 @@ class StorageEngine {
     // Record to rolling hourly history
     const today = getLocalDateString()
     const currentHour = new Date().getHours()
-    let historyEntry = data.history.find(h => h.date === today && h.hour === currentHour && h.domain === domain)
+    let historyEntry = data.history.find(
+      h => h.date === today && h.hour === currentHour && h.domain === trackedDomain
+    )
     if (!historyEntry) {
-      historyEntry = { date: today, hour: currentHour, domain, timeSpent: 0 }
+      historyEntry = { date: today, hour: currentHour, domain: trackedDomain, timeSpent: 0 }
       data.history.push(historyEntry)
     }
     historyEntry.timeSpent += deltaMinutes
@@ -144,7 +149,7 @@ class StorageEngine {
     }
 
     for (const group of data.groups) {
-      if (group.sites.includes(domain)) {
+      if (group.sites.includes(trackedDomain)) {
         group.timeSpentToday += deltaMinutes
       }
     }
@@ -153,7 +158,7 @@ class StorageEngine {
     const shouldBlock = !!reason
 
     data.sites.forEach(s => {
-      if (s.domain !== domain) {
+      if (s.domain !== trackedDomain) {
         s.sessionTimeSpent = 0
       }
     })
@@ -282,10 +287,10 @@ class StorageEngine {
   private getBlockReasonFromData(data: StorageData, domain: string): string | null {
     if (!data.blockingEnabled) return null
 
-    const site = data.sites.find(s => s.domain === domain)
+    const site = getMatchingSite(data.sites, domain)
     if (!site || !site.blockingEnabled) return null
 
-    if (site.limitMinutes > 0 && site.timeSpentToday >= site.limitMinutes) {
+    if (isDailyLimitReached(site)) {
       return 'daily'
     }
 
@@ -297,13 +302,13 @@ class StorageEngine {
     }
 
     const matchingGroup = data.groups.find(
-      group => group.sites.includes(domain) && group.limitMinutes > 0 && group.timeSpentToday >= group.limitMinutes
+      group => group.sites.includes(site.domain) && group.limitMinutes > 0 && group.timeSpentToday >= group.limitMinutes
     )
     return matchingGroup ? 'group' : null
   }
 
   private refreshDomainSessionCooldown(data: StorageData, domain: string): boolean {
-    const site = data.sites.find(s => s.domain === domain)
+    const site = getMatchingSite(data.sites, domain)
     if (!site) return false
 
     const nowMs = Date.now()

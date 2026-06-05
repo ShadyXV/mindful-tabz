@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Globe, Edit2, Trash2, Save, X } from 'lucide-react'
 import { ProgressBar } from './ProgressBar'
+import { isDailyLimitReached } from '../lib/limitPolicy'
 import { formatTime } from '../utils/time'
 import type { Site } from '../types'
 
@@ -16,6 +17,7 @@ export function SiteCard({ site, onUpdate, onRemove, onToggleBlocking, variant =
   const [isEditing, setIsEditing] = useState(false)
   const [editLimit, setEditLimit] = useState(site.limitMinutes.toString())
   const [editSessionLimit, setEditSessionLimit] = useState(site.sessionLimitMinutes.toString())
+  const dailyLimitReached = isDailyLimitReached(site)
 
   const startEdit = () => {
     setEditLimit(site.limitMinutes.toString())
@@ -96,11 +98,11 @@ export function SiteCard({ site, onUpdate, onRemove, onToggleBlocking, variant =
             <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-[1fr_auto] gap-4 items-baseline">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Current visit</span>
-                <span className="text-emerald-400 font-black text-sm leading-none whitespace-nowrap text-right">
-                    {formatTime(site.sessionTimeSpent)} / {site.sessionLimitMinutes}m
+                <span className={`font-black text-sm leading-none whitespace-nowrap text-right ${dailyLimitReached ? 'text-slate-500' : 'text-emerald-400'}`}>
+                    {dailyLimitReached ? 'Unavailable' : `${formatTime(site.sessionTimeSpent)} / ${site.sessionLimitMinutes}m`}
                   </span>
               </div>
-              <ProgressBar value={site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="lg" />
+              <ProgressBar value={dailyLimitReached ? 0 : site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="lg" />
             </div>
 
             <div className="flex items-center gap-3 lg:justify-self-end">
@@ -219,11 +221,11 @@ export function SiteCard({ site, onUpdate, onRemove, onToggleBlocking, variant =
             <div className="flex-1 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400 font-medium">Session</span>
-                <span className="text-emerald-400 font-bold">
-                  {formatTime(site.sessionTimeSpent)} / {site.sessionLimitMinutes}m
+                <span className={`font-bold ${dailyLimitReached ? 'text-slate-500' : 'text-emerald-400'}`}>
+                  {dailyLimitReached ? 'Unavailable' : `${formatTime(site.sessionTimeSpent)} / ${site.sessionLimitMinutes}m`}
                 </span>
               </div>
-              <ProgressBar value={site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="sm" />
+              <ProgressBar value={dailyLimitReached ? 0 : site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="sm" />
             </div>
           </div>
         </div>

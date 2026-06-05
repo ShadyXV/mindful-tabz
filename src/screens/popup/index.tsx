@@ -41,18 +41,27 @@ export function PopupRoot() {
     setActiveTab('sites')
   }
 
+  const openDashboard = async () => {
+    await browser.tabs.create({ url: browser.runtime.getURL('dashboard.html') })
+  }
+
   return (
     <div className="w-[620px] min-w-[620px] min-h-screen bg-slate-950 text-slate-200 font-sans p-6">
       <div className="w-full">
         <header className="flex flex-col items-start gap-4 mb-6">
-          <div className="flex items-center gap-3 shrink-0 min-w-0">
+          <button
+            type="button"
+            onClick={openDashboard}
+            className="flex items-center gap-3 shrink-0 min-w-0 rounded-xl pr-3 transition-colors hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/70"
+            aria-label="Open Mindful Tabz dashboard"
+          >
             <div className="bg-indigo-600 p-2 rounded-lg shrink-0">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 whitespace-nowrap">
               Mindful Tabz
             </h1>
-          </div>
+          </button>
           <TabNav
             tabs={TABS}
             activeTab={activeTab}

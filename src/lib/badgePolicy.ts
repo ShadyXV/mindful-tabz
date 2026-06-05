@@ -1,8 +1,9 @@
 import type { Site } from '../types'
+import { isDailyLimitReached } from './limitPolicy.ts'
 import { isSessionCoolingDown } from './sessionPolicy.ts'
 
 export function getBadgeRemainingMinutes(site: Site, nowMs: number = Date.now()): number | null {
-  if (site.limitMinutes > 0 && site.timeSpentToday >= site.limitMinutes) {
+  if (isDailyLimitReached(site)) {
     return 0
   }
 

@@ -2,6 +2,8 @@ import { ArrowRight, CheckCircle2, Clock3, Globe, Plus } from 'lucide-react'
 import browser from '../../browser/api'
 import { ProgressBar } from '../../components/ProgressBar'
 import { useSites } from '../../hooks/useSites'
+import { getMatchingSite } from '../../lib/domainPolicy'
+import { isDailyLimitReached } from '../../lib/limitPolicy'
 import { formatTime } from '../../utils/time'
 import type { Site, ScreenTimeEntry } from '../../types'
 
@@ -148,6 +150,8 @@ function CurrentSiteLimitCard({
   site: Site
   onToggleBlocking: (domain: string, enabled: boolean) => Promise<void>
 }) {
+  const dailyLimitReached = isDailyLimitReached(site)
+
   return (
     <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 mb-5">
@@ -177,6 +181,12 @@ function CurrentSiteLimitCard({
         </label>
       </div>
 
+      {dailyLimitReached && (
+        <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-widest text-red-300">Daily limit reached</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-5">
         <div className="space-y-2">
           <div className="flex justify-between text-xs gap-3">
@@ -190,11 +200,16 @@ function CurrentSiteLimitCard({
         <div className="space-y-2">
           <div className="flex justify-between text-xs gap-3">
             <span className="text-slate-400 font-medium">Session</span>
-            <span className="text-emerald-400 font-bold whitespace-nowrap">
-              {formatTime(site.sessionTimeSpent)} / {site.sessionLimitMinutes}m
+            <span className={`font-bold whitespace-nowrap ${dailyLimitReached ? 'text-slate-500' : 'text-emerald-400'}`}>
+              {dailyLimitReached ? 'Unavailable' : `${formatTime(site.sessionTimeSpent)} / ${site.sessionLimitMinutes}m`}
             </span>
           </div>
-          <ProgressBar value={site.sessionTimeSpent} max={site.sessionLimitMinutes} color="emerald" size="sm" />
+          <ProgressBar
+            value={dailyLimitReached ? 0 : site.sessionTimeSpent}
+            max={site.sessionLimitMinutes}
+            color="emerald"
+            size="sm"
+          />
         </div>
       </div>
     </section>
@@ -208,7 +223,7 @@ export function ScreenTimeView({ sites, screenTime, activeDomain, onQuickAdd }: 
   const totalTime = domainTimes.reduce((sum, entry) => sum + entry.time, 0)
   const trackedTime = trackedTimes.reduce((sum, entry) => sum + entry.time, 0)
   const untrackedTime = totalTime - trackedTime
-  const currentSite = activeDomain ? sites.find(site => site.domain === activeDomain) : null
+  const currentSite = activeDomain ? getMatchingSite(sites, activeDomain) : null
 
   const toggleCurrentSiteBlocking = async (domain: string, enabled: boolean) => {
     await setSiteBlockingEnabled(domain, enabled)
