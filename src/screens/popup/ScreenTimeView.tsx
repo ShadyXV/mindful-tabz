@@ -43,7 +43,27 @@ function TrackedPie({ data }: { data: DomainTime[] }) {
   const radius = 54
   const strokeWidth = 20
   const circumference = 2 * Math.PI * radius
-  let offset = 0
+  const pieData = data.reduce<{
+    offset: number
+    segments: { entry: DomainTime; color: string; length: number; offset: number }[]
+  }>(
+    (acc, entry, index) => {
+      const length = (entry.time / total) * circumference
+      return {
+        offset: acc.offset + length,
+        segments: [
+          ...acc.segments,
+          {
+            entry,
+            color: PIE_COLORS[index % PIE_COLORS.length],
+            length,
+            offset: acc.offset,
+          },
+        ],
+      }
+    },
+    { offset: 0, segments: [] }
+  ).segments
 
   if (total === 0) {
     return (
@@ -70,25 +90,19 @@ function TrackedPie({ data }: { data: DomainTime[] }) {
         <div className="relative w-28 h-28">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 150 150" aria-label="Tracked site time pie chart">
             <circle cx="75" cy="75" r={radius} fill="none" stroke="#1e293b" strokeWidth={strokeWidth} />
-            {data.map((entry, index) => {
-              const length = (entry.time / total) * circumference
-              const currentOffset = offset
-              offset += length
-
-              return (
-                <circle
-                  key={entry.domain}
-                  cx="75"
-                  cy="75"
-                  r={radius}
-                  fill="none"
-                  stroke={PIE_COLORS[index % PIE_COLORS.length]}
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={`${length} ${circumference}`}
-                  strokeDashoffset={-currentOffset}
-                />
-              )
-            })}
+            {pieData.map(segment => (
+              <circle
+                key={segment.entry.domain}
+                cx="75"
+                cy="75"
+                r={radius}
+                fill="none"
+                stroke={segment.color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${segment.length} ${circumference}`}
+                strokeDashoffset={-segment.offset}
+              />
+            ))}
           </svg>
           <div className="absolute inset-0 flex items-center justify-center text-center">
             <span className="text-xl font-black text-white tracking-tighter">{formatTime(total)}</span>

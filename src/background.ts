@@ -55,7 +55,7 @@ async function syncActiveTab() {
 async function runTick() {
   await syncActiveTab()
   const effects = await focusTracker.handleTick()
-  executeEffects(effects)
+  await executeEffects(effects)
 }
 
 async function enforceActiveBlock() {
@@ -77,14 +77,14 @@ async function enforceActiveBlock() {
   }
 }
 
-function executeEffects(effects: FocusEffect[]) {
+async function executeEffects(effects: FocusEffect[]) {
   for (const effect of effects) {
     switch (effect.type) {
       case 'BLOCK':
-        blockDomain(effect.domain, effect.reason)
+        await blockDomain(effect.domain, effect.reason)
         break
       case 'NOTIFY':
-        showNotification(effect.message)
+        await showNotification(effect.message)
         break
     }
   }
@@ -110,8 +110,8 @@ async function blockDomain(domain: string, reason: string) {
   await storageEngine.recordBlockEvent(domain, reason, redirectedCount)
 }
 
-function showNotification(message: string) {
-  browser.notifications.create({
+async function showNotification(message: string) {
+  await browser.notifications.create({
     type: 'basic',
     iconUrl: 'favicon.svg',
     title: 'Mindful Tabz',
@@ -163,9 +163,9 @@ browser.windows.onFocusChanged.addListener(async windowId => {
 })
 
 browser.alarms.create('tick', { periodInMinutes: 10 / 60 })
-browser.alarms.onAlarm.addListener(alarm => {
+browser.alarms.onAlarm.addListener(async alarm => {
   if (alarm.name === 'tick') {
-    runTick()
+    await runTick()
   }
 })
 

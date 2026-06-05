@@ -59,7 +59,7 @@ export function BlockedScreen() {
         <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl">
           <p className="text-slate-500 text-sm">
             {reason === 'session'
-              ? "You've used up your continuous session time. Switch to a different domain or take a short break to reset your session timer."
+              ? "You've used up your continuous session time. Take the configured break before starting another session on this site."
               : 'This site is blocked until midnight. Go do something productive or take a well-deserved rest!'}
           </p>
         </div>

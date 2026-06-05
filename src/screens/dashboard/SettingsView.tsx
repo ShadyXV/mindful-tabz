@@ -1,13 +1,19 @@
-import { Plus, Settings, Activity, Cpu, Database } from 'lucide-react'
+import { Plus, Settings, Activity, Cpu, Database, Clock } from 'lucide-react'
 import { storageEngine } from '../../lib/StorageEngine'
 import browser from '../../browser/api'
 import type { AnalyticsSnapshot } from '../../types'
+import { MAX_SESSION_COOLDOWN_MINUTES, MIN_SESSION_COOLDOWN_MINUTES } from '../../lib/sessionPolicy'
 
 interface SettingsViewProps {
   snapshots: AnalyticsSnapshot[]
+  sessionCooldownMinutes: number
 }
 
-export function SettingsView({ snapshots }: SettingsViewProps) {
+export function SettingsView({ snapshots, sessionCooldownMinutes }: SettingsViewProps) {
+  const updateSessionCooldown = async (value: string) => {
+    await storageEngine.setSessionCooldownMinutes(Number(value))
+  }
+
   const takeSnapshot = async () => {
     try {
       const bytes = await browser.storage.local.getBytesInUse(null)
@@ -49,6 +55,31 @@ export function SettingsView({ snapshots }: SettingsViewProps) {
         </p>
 
         <div className="space-y-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-10 bg-slate-950 rounded-[2.5rem] border border-slate-800">
+            <div className="mb-6 md:mb-0 flex gap-6">
+              <div className="bg-emerald-600/10 p-4 rounded-3xl h-fit">
+                <Clock className="w-8 h-8 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Session Cooldown</h3>
+                <p className="text-slate-500 font-medium max-w-xl">
+                  Require a break before a site can start a new session after its session limit is reached.
+                </p>
+              </div>
+            </div>
+            <label className="space-y-2">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">Minutes</span>
+              <input
+                type="number"
+                min={MIN_SESSION_COOLDOWN_MINUTES}
+                max={MAX_SESSION_COOLDOWN_MINUTES}
+                value={sessionCooldownMinutes}
+                onChange={event => updateSessionCooldown(event.target.value)}
+                className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-4 w-36 text-xl font-black text-emerald-400 focus:border-emerald-500 outline-none"
+              />
+            </label>
+          </div>
+
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-10 bg-slate-950 rounded-[2.5rem] border border-slate-800 group hover:border-red-500/20 transition-all">
             <div className="mb-6 md:mb-0">
               <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Reset Data</h3>

@@ -10,6 +10,12 @@ import type {
   StorageData,
   StorageChangeCallback,
 } from '../types'
+import {
+  isSessionCoolingDown,
+  normalizeSessionCooldownMinutes,
+  refreshExpiredSessionCooldown,
+  startSessionCooldownIfNeeded,
+} from './sessionPolicy'
 
 export type {
   Site,
@@ -48,6 +54,7 @@ function pruneRollingData(data: StorageData): void {
 function normalizeSites(sites: Site[]): Site[] {
   return sites.map(site => ({
     ...site,
+    sessionBlockedUntil: typeof site.sessionBlockedUntil === 'number' ? site.sessionBlockedUntil : null,
     blockingEnabled: site.blockingEnabled ?? true,
   }))
 }
@@ -64,6 +71,7 @@ class StorageEngine {
       'blockEvents',
       'blockingPauseEvents',
       'blockingEnabled',
+      'sessionCooldownMinutes',
     ])
     return {
       sites: normalizeSites((result.sites || []) as Site[]),
@@ -75,6 +83,7 @@ class StorageEngine {
       blockEvents: (result.blockEvents || []) as BlockEvent[],
       blockingPauseEvents: (result.blockingPauseEvents || []) as BlockingPauseEvent[],
       blockingEnabled: typeof result.blockingEnabled === 'boolean' ? result.blockingEnabled : true,
+      sessionCooldownMinutes: normalizeSessionCooldownMinutes(result.sessionCooldownMinutes),
     }
   }
 
@@ -94,8 +103,16 @@ class StorageEngine {
     deltaMinutes: number
   ): Promise<{ shouldBlock: boolean; reason: string | null }> {
     const data = await this.getData()
-    let shouldBlock = false
-    let reason: string | null = null
+    const nowMs = Date.now()
+    const site = data.sites.find(s => s.domain === domain)
+
+    if (site) {
+      refreshExpiredSessionCooldown(site, nowMs)
+      if (isSessionCoolingDown(site, nowMs)) {
+        await this.saveData({ sites: data.sites })
+        return { shouldBlock: true, reason: 'session' }
+      }
+    }
 
     // Update daily screenTime
     let screenEntry = data.screenTime.find(e => e.domain === domain)
@@ -117,10 +134,10 @@ class StorageEngine {
 
     pruneRollingData(data)
 
-    const site = data.sites.find(s => s.domain === domain)
     if (site) {
       site.timeSpentToday += deltaMinutes
       site.sessionTimeSpent += deltaMinutes
+      startSessionCooldownIfNeeded(site, nowMs, data.sessionCooldownMinutes)
     }
 
     for (const group of data.groups) {
@@ -129,8 +146,8 @@ class StorageEngine {
       }
     }
 
-    reason = this.getBlockReasonFromData(data, domain)
-    shouldBlock = !!reason
+    const reason = this.getBlockReasonFromData(data, domain)
+    const shouldBlock = !!reason
 
     data.sites.forEach(s => {
       if (s.domain !== domain) {
@@ -168,7 +185,15 @@ class StorageEngine {
 
   async getBlockReasonForDomain(domain: string): Promise<string | null> {
     const data = await this.getData()
+    const changed = this.refreshDomainSessionCooldown(data, domain)
+    if (changed) {
+      await this.saveData({ sites: data.sites })
+    }
     return this.getBlockReasonFromData(data, domain)
+  }
+
+  async setSessionCooldownMinutes(minutes: number): Promise<void> {
+    await this.saveData({ sessionCooldownMinutes: normalizeSessionCooldownMinutes(minutes) })
   }
 
   async setGlobalBlockingEnabled(enabled: boolean): Promise<void> {
@@ -206,6 +231,7 @@ class StorageEngine {
       data.sites.forEach(s => {
         s.timeSpentToday = 0
         s.sessionTimeSpent = 0
+        s.sessionBlockedUntil = null
       })
       data.groups.forEach(g => (g.timeSpentToday = 0))
       data.screenTime = []
@@ -231,6 +257,7 @@ class StorageEngine {
       sessionLimitMinutes: sessionLimit,
       timeSpentToday: history ? history.timeSpentToday : 0,
       sessionTimeSpent: 0,
+      sessionBlockedUntil: null,
       blockingEnabled: true,
     })
     await this.saveData({ sites: data.sites })
@@ -242,6 +269,9 @@ class StorageEngine {
     if (site) {
       site.limitMinutes = limit
       site.sessionLimitMinutes = sessionLimit
+      if (sessionLimit <= 0 || site.sessionTimeSpent < sessionLimit) {
+        site.sessionBlockedUntil = null
+      }
       await this.saveData({ sites: data.sites })
     }
   }
@@ -256,7 +286,10 @@ class StorageEngine {
       return 'daily'
     }
 
-    if (site.sessionLimitMinutes > 0 && site.sessionTimeSpent >= site.sessionLimitMinutes) {
+    if (
+      site.sessionLimitMinutes > 0 &&
+      (isSessionCoolingDown(site, Date.now()) || site.sessionTimeSpent >= site.sessionLimitMinutes)
+    ) {
       return 'session'
     }
 
@@ -264,6 +297,16 @@ class StorageEngine {
       group => group.sites.includes(domain) && group.limitMinutes > 0 && group.timeSpentToday >= group.limitMinutes
     )
     return matchingGroup ? 'group' : null
+  }
+
+  private refreshDomainSessionCooldown(data: StorageData, domain: string): boolean {
+    const site = data.sites.find(s => s.domain === domain)
+    if (!site) return false
+
+    const nowMs = Date.now()
+    const didRefresh = refreshExpiredSessionCooldown(site, nowMs)
+    const didStart = startSessionCooldownIfNeeded(site, nowMs, data.sessionCooldownMinutes)
+    return didRefresh || didStart
   }
 
   private recordBlockingPauseEventInData(

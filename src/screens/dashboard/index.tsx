@@ -27,6 +27,7 @@ export function DashboardRoot() {
     blockEvents,
     blockingPauseEvents,
     blockingEnabled,
+    sessionCooldownMinutes,
   } = useStorageState()
   const [activeTab, setActiveTab] = useState<DashboardTab>('screentime')
 
@@ -72,7 +73,9 @@ export function DashboardRoot() {
           )}
           {activeTab === 'sites' && <BlockListView sites={sites} />}
           {activeTab === 'groups' && <GroupsView sites={sites} groups={groups} />}
-          {activeTab === 'settings' && <SettingsView snapshots={snapshots} />}
+          {activeTab === 'settings' && (
+            <SettingsView snapshots={snapshots} sessionCooldownMinutes={sessionCooldownMinutes} />
+          )}
         </main>
       </div>
     </div>

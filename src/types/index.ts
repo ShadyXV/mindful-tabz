@@ -4,6 +4,7 @@ export interface Site {
   sessionLimitMinutes: number;
   timeSpentToday: number;
   sessionTimeSpent: number;
+  sessionBlockedUntil: number | null;
   blockingEnabled: boolean;
 }
 
@@ -61,6 +62,7 @@ export interface StorageData {
   blockEvents: BlockEvent[];
   blockingPauseEvents: BlockingPauseEvent[];
   blockingEnabled: boolean;
+  sessionCooldownMinutes: number;
 }
 
 export type StorageChangeCallback = (data: StorageData) => void;

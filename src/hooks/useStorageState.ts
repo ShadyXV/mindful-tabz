@@ -19,6 +19,7 @@ export interface StorageState {
   blockEvents: BlockEvent[]
   blockingPauseEvents: BlockingPauseEvent[]
   blockingEnabled: boolean
+  sessionCooldownMinutes: number
   isLoaded: boolean
 }
 
@@ -32,6 +33,7 @@ export function useStorageState(): StorageState {
     blockEvents: [],
     blockingPauseEvents: [],
     blockingEnabled: true,
+    sessionCooldownMinutes: 5,
     isLoaded: false,
   })
 
@@ -46,6 +48,7 @@ export function useStorageState(): StorageState {
         blockEvents: data.blockEvents || [],
         blockingPauseEvents: data.blockingPauseEvents || [],
         blockingEnabled: data.blockingEnabled,
+        sessionCooldownMinutes: data.sessionCooldownMinutes,
         isLoaded: true,
       })
     })
@@ -61,6 +64,7 @@ export function useStorageState(): StorageState {
         blockEvents: data.blockEvents || [],
         blockingPauseEvents: data.blockingPauseEvents || [],
         blockingEnabled: data.blockingEnabled,
+        sessionCooldownMinutes: data.sessionCooldownMinutes,
       }))
     })
 

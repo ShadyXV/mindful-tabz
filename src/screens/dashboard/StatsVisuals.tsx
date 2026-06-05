@@ -192,18 +192,27 @@ export function DistributionChart({
   const radius = 58
   const strokeWidth = 22
   const circumference = 2 * Math.PI * radius
-  let runningOffset = 0
-  const pieData = data.map((item, index) => {
-    const length = total > 0 ? (item.time / total) * circumference : 0
-    const segment = {
-      item,
-      color: PIE_COLORS[index % PIE_COLORS.length],
-      length,
-      offset: runningOffset,
-    }
-    runningOffset += length
-    return segment
-  })
+  const pieData = data.reduce<{
+    offset: number
+    segments: { item: DomainTimeDatum; color: string; length: number; offset: number }[]
+  }>(
+    (acc, item, index) => {
+      const length = total > 0 ? (item.time / total) * circumference : 0
+      return {
+        offset: acc.offset + length,
+        segments: [
+          ...acc.segments,
+          {
+            item,
+            color: PIE_COLORS[index % PIE_COLORS.length],
+            length,
+            offset: acc.offset,
+          },
+        ],
+      }
+    },
+    { offset: 0, segments: [] }
+  ).segments
   const activeItem = hoveredDomain ? data.find(item => item.domain === hoveredDomain) : null
 
   return (
