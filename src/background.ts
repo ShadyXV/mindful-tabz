@@ -3,6 +3,7 @@ import { focusTracker } from './lib/FocusTracker'
 import type { FocusEffect } from './lib/FocusTracker'
 import { domainNormalizer } from './lib/DomainNormalizer'
 import { storageEngine } from './lib/StorageEngine'
+import { getBadgeRemainingMinutes } from './lib/badgePolicy'
 
 function formatTime(minutes: number): string {
   if (minutes < 1) return '<1m'
@@ -22,10 +23,11 @@ async function updateBadge(activeDomain: string | null) {
   const site = state.sites.find(s => s.domain === activeDomain)
 
   if (site) {
-    // Site is in the block list
-    const remainingDaily = Math.max(0, site.limitMinutes - site.timeSpentToday)
-    const remainingSession = Math.max(0, site.sessionLimitMinutes - site.sessionTimeSpent)
-    const remainingTime = Math.min(remainingDaily, remainingSession)
+    const remainingTime = getBadgeRemainingMinutes(site)
+    if (remainingTime === null) {
+      await browser.action.setBadgeText({ text: '' })
+      return
+    }
 
     const color = remainingTime < 2 ? '#EF4444' : '#3B82F6' // Red if < 2 mins, else Blue
     
@@ -55,6 +57,7 @@ async function syncActiveTab() {
 async function runTick() {
   await syncActiveTab()
   const effects = await focusTracker.handleTick()
+  await syncActiveTab()
   await executeEffects(effects)
 }
 
