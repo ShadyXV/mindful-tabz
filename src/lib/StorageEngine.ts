@@ -16,6 +16,7 @@ import {
   refreshExpiredSessionCooldown,
   startSessionCooldownIfNeeded,
 } from './sessionPolicy'
+import { canEnforceSiteBlocking } from './blockingPolicy'
 
 export type {
   Site,
@@ -108,7 +109,7 @@ class StorageEngine {
 
     if (site) {
       refreshExpiredSessionCooldown(site, nowMs)
-      if (isSessionCoolingDown(site, nowMs)) {
+      if (canEnforceSiteBlocking(data.blockingEnabled, site) && isSessionCoolingDown(site, nowMs)) {
         await this.saveData({ sites: data.sites })
         return { shouldBlock: true, reason: 'session' }
       }
@@ -137,7 +138,9 @@ class StorageEngine {
     if (site) {
       site.timeSpentToday += deltaMinutes
       site.sessionTimeSpent += deltaMinutes
-      startSessionCooldownIfNeeded(site, nowMs, data.sessionCooldownMinutes)
+      if (canEnforceSiteBlocking(data.blockingEnabled, site)) {
+        startSessionCooldownIfNeeded(site, nowMs, data.sessionCooldownMinutes)
+      }
     }
 
     for (const group of data.groups) {
@@ -305,7 +308,9 @@ class StorageEngine {
 
     const nowMs = Date.now()
     const didRefresh = refreshExpiredSessionCooldown(site, nowMs)
-    const didStart = startSessionCooldownIfNeeded(site, nowMs, data.sessionCooldownMinutes)
+    const didStart = canEnforceSiteBlocking(data.blockingEnabled, site)
+      ? startSessionCooldownIfNeeded(site, nowMs, data.sessionCooldownMinutes)
+      : false
     return didRefresh || didStart
   }
 
